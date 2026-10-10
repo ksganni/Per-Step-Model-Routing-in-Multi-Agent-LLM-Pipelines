@@ -55,6 +55,7 @@ Question + Supporting Documents
 ├── harness/
 │   ├── client.py                # LiteLLM wrapper — call(model, messages) with cost tracking
 │   ├── cache.py                 # Disk cache for reproducible reruns
+│   ├── pricing.py               # Per-million-token pricing and compute_cost()
 │   ├── verifiers.py             # SQL and QA answer verification
 │   ├── try_one.py               # Quick smoke test
 │   ├── test_harness.py          # 11 offline unit tests
@@ -164,4 +165,3 @@ The experiment matrix is 3 models × 3 SQL steps × 150 sampled questions, plus 
 ## Course
 
 YWCC 691 — Graduate Capstone, NJIT (Fall 2026)
-
