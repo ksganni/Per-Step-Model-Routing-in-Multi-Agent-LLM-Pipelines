@@ -140,6 +140,33 @@ class ExperimentRunnerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             experiment_runner.run_one("qa", {"id": "x"}, "flash")
 
+    def test_run_experiment_skips_failed_question_without_writing(self):
+        sample = [
+            {"question_id": 201, "difficulty": "simple", "db_id": "x", "question": "q1"},
+            {"question_id": 202, "difficulty": "moderate", "db_id": "x", "question": "q2"},
+        ]
+        with tempfile.TemporaryDirectory() as folder:
+            folder_path = Path(folder)
+            results = folder_path / "results.csv"
+            config_path = folder_path / "all-flash.json"
+            config_path.write_text(json.dumps({"sql": "flash"}), encoding="utf-8")
+
+            def boom_then_ok(pipeline, task, models, db_dir=None):
+                if task["question_id"] == 201:
+                    raise RuntimeError("provider busy")
+                return FAKE_TRACE
+
+            with mock.patch.object(experiment_runner, "load_tasks", return_value=sample), \
+                 mock.patch.object(experiment_runner, "run_one", side_effect=boom_then_ok):
+                ran = run_experiment(
+                    "sql", str(config_path), limit=2, results_path=results, db_dir=None
+                )
+
+            self.assertEqual(ran, 1)
+            with results.open(encoding="utf-8", newline="") as f:
+                rows = list(csv.DictReader(f))
+            self.assertEqual({r["question_id"] for r in rows}, {"202"})
+
 
 if __name__ == "__main__":
     unittest.main()

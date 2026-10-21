@@ -191,7 +191,12 @@ def run_experiment(
             print(f"skip {pipeline} {qid} (already in {results_path.name})")
             continue
         print(f"run  {pipeline} {qid} ...")
-        trace = run_one(pipeline, task, models, db_dir=db_dir)
+        try:
+            trace = run_one(pipeline, task, models, db_dir=db_dir)
+        except Exception as exc:
+            # Leave this question out of the CSV so a later run retries it.
+            print(f"      failed {qid}: {type(exc).__name__}: {exc}")
+            continue
         rows = rows_from_trace(pipeline, task, trace)
         if not rows:
             # Still record a placeholder so resume does not retry forever
