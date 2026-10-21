@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from pathlib import Path
 
 from harness.client import MODELS, call
@@ -86,11 +87,19 @@ def run_sql_trace(question: int | str | dict, models: str | dict[str, str],
     calls: list[dict] = []
 
     def llm(step: str, prompt: str) -> str:
+        started = time.perf_counter()
         response = call(plan[step], [{"role": "user", "content": prompt}])
-        calls.append({"step": step, "model": response.model,
-                      "prompt_tokens": response.prompt_tokens,
-                      "completion_tokens": response.completion_tokens,
-                      "cached": response.cached})
+        elapsed = time.perf_counter() - started
+        calls.append({
+            "step": step,
+            "model": response.model,
+            "prompt_tokens": response.prompt_tokens,
+            "completion_tokens": response.completion_tokens,
+            "cost": response.cost,
+            "time_sec": elapsed,
+            "raw_output": response.text,
+            "cached": response.cached,
+        })
         return response.text
 
     db_path = None
@@ -136,7 +145,8 @@ def main() -> None:
     trace = run_sql_trace(args.qid, args.model, args.db_dir)
     for c in trace["calls"]:
         print(f"{c['step']:<16} {c['model']:<10} {c['prompt_tokens']:>6} in "
-              f"{c['completion_tokens']:>5} out  cached={c['cached']}")
+              f"{c['completion_tokens']:>5} out  "
+              f"${c['cost']:.6f}  {c['time_sec']:.2f}s  cached={c['cached']}")
     print(f"stop: {trace['stop_reason']}")
     print(f"SQL:  {trace['final_sql']}")
 
