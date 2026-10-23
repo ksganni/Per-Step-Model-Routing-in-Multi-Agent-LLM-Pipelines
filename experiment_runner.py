@@ -6,14 +6,32 @@ question, and appends rows to experiments/results.csv. If the script stops
 partway, a later run skips question_ids that are already in the CSV.
 
 CSV columns: question_id, pipeline, difficulty, step, model, tokens_in,
-tokens_out, cost, time_sec, raw_output, final_answer, is_correct.
+tokens_out, cost, time_sec, raw_output, final_answer, is_correct,
+error_propagated.
 
 ``is_correct`` is True or False from harness.verifiers, or blank when the
 answer cannot be scored (no database folder, or the gold query fails).
 
+``error_propagated`` is filled only when --baseline points at the results
+CSV of an all-strong run of the same questions. For a config with one weak
+step it is True when the baseline answered correctly, this run answered
+incorrectly, and the weak step's output differs from the baseline's (see
+harness/error_propagation.py). Without --baseline it is left blank.
+
+Resume skips question_ids already in the results file, so each config needs
+its own --results file.
+
 From the repository root:
 
     python experiment_runner.py --pipeline sql --config all-flash --limit 10
+
+Error propagation for a cheap Selector, on the first 5 BIRD questions:
+
+    python experiment_runner.py --pipeline sql --config all-flash --limit 5 \
+        --results experiments/results-all-flash.csv
+    python experiment_runner.py --pipeline sql --config cheap-selector --limit 5 \
+        --results experiments/results-cheap-selector.csv \
+        --baseline experiments/results-all-flash.csv
 """
 
 from __future__ import annotations
@@ -23,6 +41,7 @@ import csv
 import json
 from pathlib import Path
 
+from harness.error_propagation import error_propagated as judge_propagation
 from harness.verifiers import verify_qa, verify_sql
 from run_pipeline import DB_DIR, run_sql_trace
 
@@ -45,6 +64,7 @@ CSV_COLUMNS = [
     "raw_output",
     "final_answer",
     "is_correct",
+    "error_propagated",
 ]
 
 
@@ -123,14 +143,39 @@ def completed_ids(results_path: Path, pipeline: str) -> set[str]:
 
 
 def append_rows(results_path: Path, rows: list[dict]) -> None:
-    """Append rows to the CSV, writing the header when the file is new."""
+    """Append rows to the CSV, writing the header when the file is new.
+
+    An existing file keeps its own header, so appending to a results file
+    written before a column was added does not shift the columns.
+    """
     results_path.parent.mkdir(parents=True, exist_ok=True)
     new_file = not results_path.is_file() or results_path.stat().st_size == 0
+    fieldnames = CSV_COLUMNS
+    if not new_file:
+        with results_path.open(encoding="utf-8", newline="") as f:
+            header = next(csv.reader(f), None)
+        if header:
+            fieldnames = header
     with results_path.open("a", encoding="utf-8", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS, extrasaction="ignore")
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
         if new_file:
             writer.writeheader()
         writer.writerows(rows)
+
+
+def load_baseline(baseline_path: Path, pipeline: str) -> dict[str, list[dict]]:
+    """Read an all-strong results CSV into {question_id: [step rows]}."""
+    if not baseline_path.is_file():
+        raise FileNotFoundError(
+            f"Baseline {baseline_path} not found. Run the all-strong config first "
+            f"with --results {baseline_path}."
+        )
+    baseline: dict[str, list[dict]] = {}
+    with baseline_path.open(encoding="utf-8", newline="") as f:
+        for row in csv.DictReader(f):
+            if row.get("pipeline") == pipeline and row.get("question_id"):
+                baseline.setdefault(row["question_id"], []).append(row)
+    return baseline
 
 
 def score_answer(pipeline: str, task: dict, final_answer: str,
@@ -179,6 +224,7 @@ def rows_from_trace(pipeline: str, task: dict, trace: dict,
             "raw_output": call.get("raw_output", ""),
             "final_answer": final_answer or "",
             "is_correct": is_correct,
+            "error_propagated": "",
         })
     return rows
 
@@ -201,12 +247,22 @@ def run_experiment(
     limit: int | None = None,
     results_path: Path = DEFAULT_RESULTS,
     db_dir: str | Path | None = DB_DIR,
+    baseline_path: Path | None = None,
 ) -> int:
     """Run the sample tasks and append step rows to the results CSV.
+
+    With ``baseline_path``, every question's rows also get error_propagated,
+    judged against that question's rows in the baseline CSV.
 
     Returns the number of questions that were run in this invocation.
     """
     models = models_for_pipeline(load_config(config_name), pipeline)
+    baseline = None
+    if baseline_path is not None:
+        if Path(baseline_path).resolve() == Path(results_path).resolve():
+            raise ValueError("--baseline must be a different file from --results.")
+        baseline = load_baseline(Path(baseline_path), pipeline)
+    propagation_counts = {"True": 0, "False": 0, "blank": 0}
     tasks = load_tasks(pipeline)
     if limit is not None:
         tasks = tasks[:limit]
@@ -245,11 +301,20 @@ def run_experiment(
                     else trace.get("final_answer", "")
                 ) or "",
                 "is_correct": "",
+                "error_propagated": "",
             }]
+        if baseline is not None:
+            propagated = judge_propagation(rows, baseline.get(qid, []))
+            for row in rows:
+                row["error_propagated"] = propagated
+            propagation_counts[str(propagated) if propagated != "" else "blank"] += 1
         append_rows(results_path, rows)
         ran += 1
         done.add(qid)
         print(f"      {len(rows)} step row(s), stop={trace.get('stop_reason', '')}")
+    if baseline is not None:
+        print("error_propagated: "
+              + ", ".join(f"{k}={v}" for k, v in propagation_counts.items()))
     return ran
 
 
@@ -267,6 +332,9 @@ def main() -> None:
                         help="CSV path (default: experiments/results.csv)")
     parser.add_argument("--db-dir", default=str(DB_DIR),
                         help="folder with <db_id>/<db_id>.sqlite (enables the SQL refiner)")
+    parser.add_argument("--baseline", default=None,
+                        help="results CSV of an all-strong run of the same questions; "
+                             "fills error_propagated")
     args = parser.parse_args()
 
     db_dir: str | Path | None = args.db_dir
@@ -279,6 +347,7 @@ def main() -> None:
         limit=args.limit,
         results_path=Path(args.results),
         db_dir=db_dir,
+        baseline_path=Path(args.baseline) if args.baseline else None,
     )
     print(f"done: ran {ran} question(s) -> {args.results}")
 
