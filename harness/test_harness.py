@@ -198,5 +198,42 @@ class CostTests(HarnessTestCase):
         with self.assertRaises(KeyError):
             compute_cost("gpt", 1, 1)
 
+
+class RetryTests(HarnessTestCase):
+    def setUp(self):
+        super().setUp()
+        os.environ["GEMINI_API_KEY"] = "test-key"
+
+    def test_retries_service_unavailable_then_succeeds(self):
+        from litellm.exceptions import ServiceUnavailableError
+
+        self.completion.side_effect = [
+            ServiceUnavailableError(
+                "busy",
+                llm_provider="gemini",
+                model="gemini/gemini-3.5-flash",
+            ),
+            fake_response(),
+        ]
+        with mock.patch("harness.client.time.sleep") as sleep:
+            result = call("flash", HELLO)
+        self.assertEqual(result.text, "hello")
+        self.assertEqual(self.completion.call_count, 2)
+        sleep.assert_called_once()
+
+    def test_gives_up_after_max_retries(self):
+        from litellm.exceptions import ServiceUnavailableError
+
+        err = ServiceUnavailableError(
+            "busy",
+            llm_provider="gemini",
+            model="gemini/gemini-3.5-flash",
+        )
+        self.completion.side_effect = err
+        with mock.patch("harness.client.time.sleep"), self.assertRaises(ServiceUnavailableError):
+            call("flash", HELLO)
+        self.assertEqual(self.completion.call_count, 6)  # 1 + MAX_RETRIES
+
+
 if __name__ == "__main__":
     unittest.main()
