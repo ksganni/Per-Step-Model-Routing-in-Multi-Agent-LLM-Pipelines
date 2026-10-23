@@ -136,9 +136,13 @@ class ExperimentRunnerTests(unittest.TestCase):
             self.assertEqual(len(rows), 4)  # 2 questions × 2 steps
             self.assertEqual({r["question_id"] for r in rows}, {"101", "102"})
 
-    def test_qa_not_wired_yet(self):
-        with self.assertRaises(ValueError):
-            experiment_runner.run_one("qa", {"id": "x"}, "flash")
+    def test_qa_run_one_calls_run_qa_trace(self):
+        task = {"id": "abc", "type": "bridge", "question": "q?"}
+        fake = {"final_answer": "yes", "stop_reason": "ok", "calls": []}
+        with mock.patch.object(experiment_runner, "run_qa_trace", return_value=fake) as qa:
+            trace = experiment_runner.run_one("qa", task, "flash")
+        qa.assert_called_once_with(task, "flash")
+        self.assertEqual(trace["final_answer"], "yes")
 
     def test_run_experiment_skips_failed_question_without_writing(self):
         sample = [

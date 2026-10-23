@@ -22,7 +22,7 @@ import csv
 import json
 from pathlib import Path
 
-from run_pipeline import DB_DIR, run_sql_trace
+from run_pipeline import DB_DIR, run_qa_trace, run_sql_trace
 
 ROOT = Path(__file__).resolve().parent
 BIRD_SAMPLE = ROOT / "data" / "bird_sample_150.json"
@@ -144,10 +144,10 @@ def rows_from_trace(pipeline: str, task: dict, trace: dict) -> list[dict]:
             "difficulty": difficulty,
             "step": call["step"],
             "model": call["model"],
-            "tokens_in": call.get("prompt_tokens", 0),
-            "tokens_out": call.get("completion_tokens", 0),
+            "tokens_in": call.get("tokens_in", call.get("prompt_tokens", 0)),
+            "tokens_out": call.get("tokens_out", call.get("completion_tokens", 0)),
             "cost": f"{float(call.get('cost', 0.0)):.8f}",
-            "time_sec": f"{float(call.get('time_sec', 0.0)):.4f}",
+            "time_sec": f"{float(call.get('time_s', call.get('time_sec', 0.0))):.4f}",
             "raw_output": call.get("raw_output", ""),
             "final_answer": final_answer or "",
             "is_correct": "",
@@ -160,10 +160,9 @@ def run_one(pipeline: str, task: dict, models: str | dict[str, str],
     """Run one question and return the full trace."""
     if pipeline == "sql":
         return run_sql_trace(task, models, db_dir=db_dir)
-    raise ValueError(
-        "QA is not wired into run_pipeline yet. Use --pipeline sql for now, "
-        "or wait for the QA extension of run_pipeline."
-    )
+    if pipeline == "qa":
+        return run_qa_trace(task, models)
+    raise ValueError(f"Unknown pipeline {pipeline!r}. Use: sql, qa")
 
 
 def run_experiment(
