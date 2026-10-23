@@ -8,7 +8,8 @@ partway, a later run skips question_ids that are already in the CSV.
 CSV columns: question_id, pipeline, difficulty, step, model, tokens_in,
 tokens_out, cost, time_sec, raw_output, final_answer, is_correct.
 
-``is_correct`` is left blank here. Scoring is wired in by a later task.
+``is_correct`` is True or False from harness.verifiers, or blank when the
+answer cannot be scored (no database folder, or the gold query fails).
 
 From the repository root:
 
@@ -22,6 +23,7 @@ import csv
 import json
 from pathlib import Path
 
+from harness.verifiers import verify_qa, verify_sql
 from run_pipeline import DB_DIR, run_sql_trace
 
 ROOT = Path(__file__).resolve().parent
@@ -131,11 +133,37 @@ def append_rows(results_path: Path, rows: list[dict]) -> None:
         writer.writerows(rows)
 
 
-def rows_from_trace(pipeline: str, task: dict, trace: dict) -> list[dict]:
+def score_answer(pipeline: str, task: dict, final_answer: str,
+                 db_dir: str | Path | None = DB_DIR) -> bool | str:
+    """Score a final answer against the gold answer.
+
+    Returns True or False, or "" when the answer cannot be scored.
+    """
+    if pipeline == "sql":
+        if not final_answer:
+            return False
+        db_id = task.get("db_id")
+        if db_dir is None or not db_id or not task.get("SQL"):
+            return ""
+        db_path = Path(db_dir) / db_id / f"{db_id}.sqlite"
+        if not db_path.is_file():
+            return ""
+        try:
+            return verify_sql(str(db_path), final_answer, task["SQL"])
+        except Exception:
+            return ""
+    if not task.get("answer"):
+        return ""
+    return verify_qa(final_answer or "", task["answer"])
+
+
+def rows_from_trace(pipeline: str, task: dict, trace: dict,
+                    db_dir: str | Path | None = DB_DIR) -> list[dict]:
     """Turn one pipeline trace into CSV rows (one per model call)."""
     qid = task_id(pipeline, task)
     difficulty = task_difficulty(pipeline, task)
     final_answer = trace.get("final_sql") if pipeline == "sql" else trace.get("final_answer", "")
+    is_correct = score_answer(pipeline, task, final_answer or "", db_dir)
     rows = []
     for call in trace.get("calls", []):
         rows.append({
@@ -150,7 +178,7 @@ def rows_from_trace(pipeline: str, task: dict, trace: dict) -> list[dict]:
             "time_sec": f"{float(call.get('time_sec', 0.0)):.4f}",
             "raw_output": call.get("raw_output", ""),
             "final_answer": final_answer or "",
-            "is_correct": "",
+            "is_correct": is_correct,
         })
     return rows
 
@@ -197,7 +225,7 @@ def run_experiment(
             # Leave this question out of the CSV so a later run retries it.
             print(f"      failed {qid}: {type(exc).__name__}: {exc}")
             continue
-        rows = rows_from_trace(pipeline, task, trace)
+        rows = rows_from_trace(pipeline, task, trace, db_dir=db_dir)
         if not rows:
             # Still record a placeholder so resume does not retry forever
             # when the pipeline made no model calls.
