@@ -2,36 +2,33 @@
 
 Reads data/bird_sample_150.json or data/hotpot_sample_150.json, applies a
 routing config (which model serves each step), calls run_pipeline on every
-question, and appends rows to experiments/results.csv. If the script stops
-partway, a later run skips question_ids that are already in the CSV.
+question, and appends rows to a results CSV. If the script stops partway, a
+later run skips question_ids that are already in the CSV for that config.
 
-CSV columns: question_id, pipeline, difficulty, step, model, tokens_in,
-tokens_out, cost, time_sec, raw_output, final_answer, is_correct,
-error_propagated.
+CSV columns: config, question_id, pipeline, difficulty, step, model,
+tokens_in, tokens_out, cost, time_sec, raw_output, final_answer, is_correct,
+f1, em, error_propagated.
 
-``is_correct`` is True or False from harness.verifiers, or blank when the
-answer cannot be scored (no database folder, or the gold query fails).
+For QA, ``f1`` and ``em`` come from harness.verifiers; ``is_correct`` is
+True when EM holds or F1 >= 0.8. For SQL, ``f1`` / ``em`` are blank and
+``is_correct`` is execution accuracy.
 
-``error_propagated`` is filled only when --baseline points at the results
-CSV of an all-strong run of the same questions. For a config with one weak
-step it is True when the baseline answered correctly, this run answered
-incorrectly, and the weak step's output differs from the baseline's (see
-harness/error_propagation.py). Without --baseline it is left blank.
+``error_propagated`` is filled only when --baseline points at an all-strong
+results CSV (see harness/error_propagation.py).
 
-Resume skips question_ids already in the results file, so each config needs
-its own --results file.
+Resume is per (config, question_id) so several configs can share one file
+(e.g. experiments/qa_results.csv for the Sprint 4 QA matrix).
 
 From the repository root:
 
     python experiment_runner.py --pipeline sql --config all-flash --limit 10
 
-Error propagation for a cheap Selector, on the first 5 BIRD questions:
+    python experiment_runner.py --pipeline qa --config qa-all-strong \
+        --results experiments/qa_results.csv
 
-    python experiment_runner.py --pipeline sql --config all-flash --limit 5 \
-        --results experiments/results-all-flash.csv
-    python experiment_runner.py --pipeline sql --config cheap-selector --limit 5 \
-        --results experiments/results-cheap-selector.csv \
-        --baseline experiments/results-all-flash.csv
+QA matrix (9 configs x 150 HotpotQA):
+
+    python run_qa_matrix.py
 """
 
 from __future__ import annotations
@@ -42,16 +39,18 @@ import json
 from pathlib import Path
 
 from harness.error_propagation import error_propagated as judge_propagation
-from harness.verifiers import verify_qa, verify_sql
-from run_pipeline import DB_DIR, run_sql_trace
+from harness.verifiers import exact_match, f1 as f1_score, verify_qa, verify_sql
+from run_pipeline import DB_DIR, run_qa_trace, run_sql_trace
 
 ROOT = Path(__file__).resolve().parent
 BIRD_SAMPLE = ROOT / "data" / "bird_sample_150.json"
 HOTPOT_SAMPLE = ROOT / "data" / "hotpot_sample_150.json"
 CONFIG_DIR = ROOT / "experiments" / "configs"
 DEFAULT_RESULTS = ROOT / "experiments" / "results.csv"
+DEFAULT_QA_RESULTS = ROOT / "experiments" / "qa_results.csv"
 
 CSV_COLUMNS = [
+    "config",
     "question_id",
     "pipeline",
     "difficulty",
@@ -64,8 +63,16 @@ CSV_COLUMNS = [
     "raw_output",
     "final_answer",
     "is_correct",
+    "f1",
+    "em",
     "error_propagated",
 ]
+
+
+def config_label(config_name: str) -> str:
+    """Short name stored in the CSV ``config`` column."""
+    path = Path(config_name)
+    return path.stem if path.suffix else path.name
 
 
 def load_config(name: str) -> dict:
@@ -129,16 +136,21 @@ def task_difficulty(pipeline: str, task: dict) -> str:
     return str(task.get("type", ""))
 
 
-def completed_ids(results_path: Path, pipeline: str) -> set[str]:
-    """Return question_ids that already have at least one row for this pipeline."""
+def completed_ids(
+    results_path: Path, pipeline: str, config: str | None = None
+) -> set[str]:
+    """Return question_ids already logged for this pipeline (and config)."""
     if not results_path.is_file():
         return set()
     done: set[str] = set()
     with results_path.open(encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            if row.get("pipeline") == pipeline and row.get("question_id"):
-                done.add(row["question_id"])
+            if row.get("pipeline") != pipeline or not row.get("question_id"):
+                continue
+            if config is not None and row.get("config", "") not in ("", config):
+                continue
+            done.add(row["question_id"])
     return done
 
 
@@ -202,16 +214,35 @@ def score_answer(pipeline: str, task: dict, final_answer: str,
     return verify_qa(final_answer or "", task["answer"])
 
 
-def rows_from_trace(pipeline: str, task: dict, trace: dict,
-                    db_dir: str | Path | None = DB_DIR) -> list[dict]:
+def score_qa_metrics(pred: str, gold: str) -> tuple[bool | str, str, str]:
+    """Return (is_correct, f1, em) for a QA prediction."""
+    if not gold:
+        return "", "", ""
+    em = exact_match(pred or "", gold)
+    f1_val = f1_score(pred or "", gold)
+    return (em or f1_val >= 0.8), f"{f1_val:.4f}", str(em)
+
+
+def rows_from_trace(
+    pipeline: str,
+    task: dict,
+    trace: dict,
+    db_dir: str | Path | None = DB_DIR,
+    config: str = "",
+) -> list[dict]:
     """Turn one pipeline trace into CSV rows (one per model call)."""
     qid = task_id(pipeline, task)
     difficulty = task_difficulty(pipeline, task)
     final_answer = trace.get("final_sql") if pipeline == "sql" else trace.get("final_answer", "")
-    is_correct = score_answer(pipeline, task, final_answer or "", db_dir)
+    if pipeline == "qa":
+        is_correct, f1_val, em_val = score_qa_metrics(final_answer or "", task.get("answer", ""))
+    else:
+        is_correct = score_answer(pipeline, task, final_answer or "", db_dir)
+        f1_val, em_val = "", ""
     rows = []
     for call in trace.get("calls", []):
         rows.append({
+            "config": config,
             "question_id": qid,
             "pipeline": pipeline,
             "difficulty": difficulty,
@@ -224,9 +255,61 @@ def rows_from_trace(pipeline: str, task: dict, trace: dict,
             "raw_output": call.get("raw_output", ""),
             "final_answer": final_answer or "",
             "is_correct": is_correct,
+            "f1": f1_val,
+            "em": em_val,
             "error_propagated": "",
         })
     return rows
+
+
+def question_row_from_trace(
+    pipeline: str,
+    task: dict,
+    trace: dict,
+    db_dir: str | Path | None = DB_DIR,
+    config: str = "",
+) -> dict:
+    """One summary row per question (used for the QA matrix deliverable)."""
+    step_rows = rows_from_trace(pipeline, task, trace, db_dir=db_dir, config=config)
+    final_answer = (
+        trace.get("final_sql") if pipeline == "sql" else trace.get("final_answer", "")
+    ) or ""
+    if step_rows:
+        tokens_in = sum(int(r["tokens_in"] or 0) for r in step_rows)
+        tokens_out = sum(int(r["tokens_out"] or 0) for r in step_rows)
+        cost = sum(float(r["cost"] or 0) for r in step_rows)
+        time_sec = sum(float(r["time_sec"] or 0) for r in step_rows)
+        is_correct = step_rows[0]["is_correct"]
+        f1_val = step_rows[0]["f1"]
+        em_val = step_rows[0]["em"]
+    else:
+        tokens_in = tokens_out = 0
+        cost = time_sec = 0.0
+        if pipeline == "qa":
+            is_correct, f1_val, em_val = score_qa_metrics(
+                final_answer, task.get("answer", "")
+            )
+        else:
+            is_correct = score_answer(pipeline, task, final_answer, db_dir)
+            f1_val = em_val = ""
+    return {
+        "config": config,
+        "question_id": task_id(pipeline, task),
+        "pipeline": pipeline,
+        "difficulty": task_difficulty(pipeline, task),
+        "step": "",
+        "model": "",
+        "tokens_in": tokens_in,
+        "tokens_out": tokens_out,
+        "cost": f"{cost:.8f}",
+        "time_sec": f"{time_sec:.4f}",
+        "raw_output": "",
+        "final_answer": final_answer,
+        "is_correct": is_correct,
+        "f1": f1_val,
+        "em": em_val,
+        "error_propagated": "",
+    }
 
 
 def run_one(pipeline: str, task: dict, models: str | dict[str, str],
@@ -234,10 +317,9 @@ def run_one(pipeline: str, task: dict, models: str | dict[str, str],
     """Run one question and return the full trace."""
     if pipeline == "sql":
         return run_sql_trace(task, models, db_dir=db_dir)
-    raise ValueError(
-        "QA is not wired into run_pipeline yet. Use --pipeline sql for now, "
-        "or wait for the QA extension of run_pipeline."
-    )
+    if pipeline == "qa":
+        return run_qa_trace(task, models)
+    raise ValueError(f"Unknown pipeline {pipeline!r}. Use: sql, qa")
 
 
 def run_experiment(
@@ -248,14 +330,17 @@ def run_experiment(
     results_path: Path = DEFAULT_RESULTS,
     db_dir: str | Path | None = DB_DIR,
     baseline_path: Path | None = None,
+    question_rows: bool = False,
 ) -> int:
-    """Run the sample tasks and append step rows to the results CSV.
+    """Run the sample tasks and append rows to the results CSV.
 
-    With ``baseline_path``, every question's rows also get error_propagated,
-    judged against that question's rows in the baseline CSV.
+    With ``question_rows=True`` (default for QA matrix), write one summary
+    row per question so 9 configs x 150 questions ≈ 1,350 rows. Otherwise
+    write one row per model call (needed for error_propagated on SQL).
 
     Returns the number of questions that were run in this invocation.
     """
+    label = config_label(config_name)
     models = models_for_pipeline(load_config(config_name), pipeline)
     baseline = None
     if baseline_path is not None:
@@ -267,25 +352,31 @@ def run_experiment(
     if limit is not None:
         tasks = tasks[:limit]
 
-    done = completed_ids(results_path, pipeline)
+    done = completed_ids(results_path, pipeline, config=label)
     ran = 0
     for task in tasks:
         qid = task_id(pipeline, task)
         if qid in done:
-            print(f"skip {pipeline} {qid} (already in {results_path.name})")
+            print(f"skip {pipeline} {label} {qid} (already in {results_path.name})")
             continue
-        print(f"run  {pipeline} {qid} ...")
+        print(f"run  {pipeline} {label} {qid} ...")
         try:
             trace = run_one(pipeline, task, models, db_dir=db_dir)
         except Exception as exc:
             # Leave this question out of the CSV so a later run retries it.
             print(f"      failed {qid}: {type(exc).__name__}: {exc}")
             continue
-        rows = rows_from_trace(pipeline, task, trace, db_dir=db_dir)
+        if question_rows:
+            rows = [question_row_from_trace(
+                pipeline, task, trace, db_dir=db_dir, config=label
+            )]
+        else:
+            rows = rows_from_trace(
+                pipeline, task, trace, db_dir=db_dir, config=label
+            )
         if not rows:
-            # Still record a placeholder so resume does not retry forever
-            # when the pipeline made no model calls.
             rows = [{
+                "config": label,
                 "question_id": qid,
                 "pipeline": pipeline,
                 "difficulty": task_difficulty(pipeline, task),
@@ -301,9 +392,11 @@ def run_experiment(
                     else trace.get("final_answer", "")
                 ) or "",
                 "is_correct": "",
+                "f1": "",
+                "em": "",
                 "error_propagated": "",
             }]
-        if baseline is not None:
+        if baseline is not None and not question_rows:
             propagated = judge_propagation(rows, baseline.get(qid, []))
             for row in rows:
                 row["error_propagated"] = propagated
@@ -311,7 +404,11 @@ def run_experiment(
         append_rows(results_path, rows)
         ran += 1
         done.add(qid)
-        print(f"      {len(rows)} step row(s), stop={trace.get('stop_reason', '')}")
+        print(
+            f"      {len(rows)} row(s), stop={trace.get('stop_reason', '')}"
+            + (f", f1={rows[0].get('f1', '')}, em={rows[0].get('em', '')}"
+               if pipeline == "qa" else "")
+        )
     if baseline is not None:
         print("error_propagated: "
               + ", ".join(f"{k}={v}" for k, v in propagation_counts.items()))
@@ -328,28 +425,46 @@ def main() -> None:
                         help="config name under experiments/configs/ or a JSON path")
     parser.add_argument("--limit", type=int, default=None,
                         help="only the first N sample questions")
-    parser.add_argument("--results", default=str(DEFAULT_RESULTS),
-                        help="CSV path (default: experiments/results.csv)")
+    parser.add_argument("--results", default=None,
+                        help="CSV path (default: experiments/results.csv, or "
+                             "experiments/qa_results.csv for --pipeline qa)")
     parser.add_argument("--db-dir", default=str(DB_DIR),
                         help="folder with <db_id>/<db_id>.sqlite (enables the SQL refiner)")
     parser.add_argument("--baseline", default=None,
                         help="results CSV of an all-strong run of the same questions; "
                              "fills error_propagated")
+    parser.add_argument("--question-rows", action="store_true",
+                        help="write one summary row per question (default for qa)")
+    parser.add_argument("--step-rows", action="store_true",
+                        help="write one row per model call (default for sql)")
     args = parser.parse_args()
 
     db_dir: str | Path | None = args.db_dir
     if db_dir == "":
         db_dir = None
 
+    if args.results is None:
+        results_path = DEFAULT_QA_RESULTS if args.pipeline == "qa" else DEFAULT_RESULTS
+    else:
+        results_path = Path(args.results)
+
+    if args.step_rows:
+        question_rows = False
+    elif args.question_rows or args.pipeline == "qa":
+        question_rows = True
+    else:
+        question_rows = False
+
     ran = run_experiment(
         args.pipeline,
         args.config,
         limit=args.limit,
-        results_path=Path(args.results),
+        results_path=results_path,
         db_dir=db_dir,
         baseline_path=Path(args.baseline) if args.baseline else None,
+        question_rows=question_rows,
     )
-    print(f"done: ran {ran} question(s) -> {args.results}")
+    print(f"done: ran {ran} question(s) -> {results_path}")
 
 
 if __name__ == "__main__":
