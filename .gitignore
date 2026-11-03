@@ -26,3 +26,8 @@ cache/
 data/bird/
 data/hotpot/
 minidev.zip
+
+# Experiment outputs (configs under experiments/configs/ stay tracked)
+experiments/results.csv
+experiments/results*.csv
+experiments/runs/

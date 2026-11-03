@@ -8,16 +8,22 @@ text with token counts. Repeated requests are read from the disk cache.
 
 import logging
 import os
+import time
 from dataclasses import dataclass
 
 import litellm
 from dotenv import load_dotenv
+from litellm.exceptions import RateLimitError, ServiceUnavailableError
 
 from harness.cache import get as cache_get
 from harness.cache import put as cache_put
 from harness.pricing import compute_cost
 
 logger = logging.getLogger(__name__)
+
+# Transient provider failures (e.g. Gemini 503 high demand).
+MAX_RETRIES = 5
+RETRY_BASE_SECONDS = 5.0
 
 # Load API settings from a local .env file when present.
 load_dotenv()
@@ -114,7 +120,28 @@ def call(model: str, messages: list[dict]) -> ModelResponse:
         kwargs["model"] = MODELS[model]
         kwargs["api_key"] = api_key
 
-    response = litellm.completion(**kwargs)
+    last_error: Exception | None = None
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            response = litellm.completion(**kwargs)
+            break
+        except (ServiceUnavailableError, RateLimitError) as exc:
+            last_error = exc
+            if attempt >= MAX_RETRIES:
+                raise
+            wait = RETRY_BASE_SECONDS * (2 ** attempt)
+            logger.warning(
+                "model=%s attempt=%d/%d failed (%s); retrying in %.0fs",
+                model,
+                attempt + 1,
+                MAX_RETRIES + 1,
+                type(exc).__name__,
+                wait,
+            )
+            time.sleep(wait)
+    else:
+        raise last_error  # pragma: no cover - loop always breaks or raises
+
     usage = response.usage
 
     result = _build_response(
