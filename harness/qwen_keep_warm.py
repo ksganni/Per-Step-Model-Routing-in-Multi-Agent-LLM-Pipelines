@@ -16,11 +16,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import ssl
 import sys
 import time
 import urllib.error
 import urllib.request
 
+import certifi
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -44,8 +46,10 @@ def ping(api_base: str, model: str, api_key: str, timeout: float) -> float:
         },
         method="POST",
     )
+    # macOS Python.org installs often lack system CA certs; use certifi.
+    ctx = ssl.create_default_context(cafile=certifi.where())
     started = time.monotonic()
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
         resp.read()
     return time.monotonic() - started
 
