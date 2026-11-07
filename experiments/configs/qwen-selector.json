@@ -1,0 +1,7 @@
+{
+  "sql": {
+    "sql.selector": "qwen",
+    "sql.decomposer": "flash",
+    "sql.refiner": "flash"
+  }
+}
