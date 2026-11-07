@@ -22,8 +22,10 @@ from experiment_runner import (
     completed_ids,
     load_config,
     models_for_pipeline,
+    question_row_from_trace,
     rows_from_trace,
     run_experiment,
+    score_qa_metrics,
     task_difficulty,
     task_id,
 )
@@ -56,12 +58,60 @@ FAKE_TRACE = {
     ],
 }
 
+FAKE_QA_TRACE = {
+    "final_answer": "Paris",
+    "stop_reason": "ok",
+    "calls": [
+        {
+            "step": "qa.decomposer",
+            "model": "flash",
+            "tokens_in": 8,
+            "tokens_out": 3,
+            "cost": 0.00001,
+            "time_s": 0.2,
+            "raw_output": '["q1"]',
+            "cached": False,
+        },
+        {
+            "step": "qa.formatter",
+            "model": "flash",
+            "tokens_in": 12,
+            "tokens_out": 1,
+            "cost": 0.00002,
+            "time_s": 0.1,
+            "raw_output": "Paris",
+            "cached": False,
+        },
+    ],
+}
+
+
+def blank_row(**overrides):
+    row = {c: "" for c in CSV_COLUMNS}
+    row.update(overrides)
+    return row
+
 
 class ExperimentRunnerTests(unittest.TestCase):
     def test_all_flash_config_loads(self):
         config = load_config("all-flash")
         self.assertEqual(models_for_pipeline(config, "sql"), "flash")
         self.assertEqual(models_for_pipeline(config, "qa"), "flash")
+
+    def test_qa_matrix_configs_load(self):
+        for name in (
+            "qa-all-strong",
+            "qa-cheap-decomposer",
+            "qa-cheap-hop-reader",
+            "qa-cheap-composer",
+            "qa-cheap-formatter",
+            "qa-qwen-decomposer",
+            "qa-qwen-hop-reader",
+            "qa-qwen-composer",
+            "qa-qwen-formatter",
+        ):
+            plan = models_for_pipeline(load_config(name), "qa")
+            self.assertTrue(isinstance(plan, (str, dict)))
 
     def test_per_step_config(self):
         plan = {
@@ -78,32 +128,55 @@ class ExperimentRunnerTests(unittest.TestCase):
         self.assertEqual(task_difficulty("qa", {"type": "bridge"}), "bridge")
 
     def test_rows_from_trace(self):
-        rows = rows_from_trace("sql", {"question_id": 231, "difficulty": "simple"}, FAKE_TRACE)
+        rows = rows_from_trace(
+            "sql", {"question_id": 231, "difficulty": "simple"}, FAKE_TRACE, config="all-flash"
+        )
         self.assertEqual(len(rows), 2)
         self.assertEqual([r["step"] for r in rows], ["sql.selector", "sql.decomposer"])
         self.assertEqual(rows[0]["question_id"], "231")
+        self.assertEqual(rows[0]["config"], "all-flash")
         self.assertEqual(rows[0]["final_answer"], "SELECT 1")
         self.assertEqual(rows[0]["is_correct"], "")
+        self.assertEqual(rows[0]["f1"], "")
+        self.assertEqual(rows[0]["em"], "")
         self.assertEqual(set(rows[0]), set(CSV_COLUMNS))
+
+    def test_qa_metrics_and_question_row(self):
+        is_correct, f1_val, em_val = score_qa_metrics("Paris", "Paris")
+        self.assertTrue(is_correct)
+        self.assertEqual(em_val, "True")
+        self.assertEqual(f1_val, "1.0000")
+
+        task = {"id": "h1", "type": "bridge", "answer": "Paris"}
+        row = question_row_from_trace("qa", task, FAKE_QA_TRACE, config="qa-all-strong")
+        self.assertEqual(row["config"], "qa-all-strong")
+        self.assertEqual(row["step"], "")
+        self.assertEqual(row["final_answer"], "Paris")
+        self.assertEqual(row["em"], "True")
+        self.assertEqual(row["f1"], "1.0000")
+        self.assertEqual(row["tokens_in"], 20)
+        self.assertEqual(row["tokens_out"], 4)
 
     def test_resume_skips_completed_ids(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "results.csv"
-            append_rows(path, [{
-                "question_id": "231",
-                "pipeline": "sql",
-                "difficulty": "challenging",
-                "step": "sql.selector",
-                "model": "flash",
-                "tokens_in": 1,
-                "tokens_out": 1,
-                "cost": "0.00000001",
-                "time_sec": "0.0100",
-                "raw_output": "x",
-                "final_answer": "SELECT 1",
-                "is_correct": "",
-            }])
+            append_rows(path, [blank_row(
+                config="all-flash",
+                question_id="231",
+                pipeline="sql",
+                difficulty="challenging",
+                step="sql.selector",
+                model="flash",
+                tokens_in=1,
+                tokens_out=1,
+                cost="0.00000001",
+                time_sec="0.0100",
+                raw_output="x",
+                final_answer="SELECT 1",
+            )])
             self.assertEqual(completed_ids(path, "sql"), {"231"})
+            self.assertEqual(completed_ids(path, "sql", config="all-flash"), {"231"})
+            self.assertEqual(completed_ids(path, "sql", config="other"), set())
             self.assertEqual(completed_ids(path, "qa"), set())
 
     def test_run_experiment_writes_csv_and_resumes(self):
@@ -143,6 +216,40 @@ class ExperimentRunnerTests(unittest.TestCase):
             trace = experiment_runner.run_one("qa", task, "flash")
         qa.assert_called_once_with(task, "flash")
         self.assertEqual(trace["final_answer"], "yes")
+
+    def test_qa_question_rows_resume_per_config(self):
+        sample = [
+            {"id": "a", "type": "bridge", "question": "q1", "answer": "Paris"},
+            {"id": "b", "type": "bridge", "question": "q2", "answer": "London"},
+        ]
+        with tempfile.TemporaryDirectory() as folder:
+            folder_path = Path(folder)
+            results = folder_path / "qa_results.csv"
+            strong = folder_path / "qa-all-strong.json"
+            cheap = folder_path / "qa-cheap-decomposer.json"
+            strong.write_text(json.dumps({"qa": "flash"}), encoding="utf-8")
+            cheap.write_text(json.dumps({"qa": {
+                "qa.decomposer": "flash-lite",
+                "qa.hop_reader": "flash",
+                "qa.composer": "flash",
+                "qa.formatter": "flash",
+            }}), encoding="utf-8")
+
+            with mock.patch.object(experiment_runner, "load_tasks", return_value=sample), \
+                 mock.patch.object(experiment_runner, "run_one", return_value=FAKE_QA_TRACE):
+                run_experiment(
+                    "qa", str(strong), limit=2, results_path=results, question_rows=True
+                )
+                run_experiment(
+                    "qa", str(cheap), limit=2, results_path=results, question_rows=True
+                )
+
+            with results.open(encoding="utf-8", newline="") as f:
+                rows = list(csv.DictReader(f))
+            self.assertEqual(len(rows), 4)  # 2 configs × 2 questions
+            self.assertEqual({r["config"] for r in rows}, {"qa-all-strong", "qa-cheap-decomposer"})
+            self.assertTrue(all(r["f1"] for r in rows))
+            self.assertTrue(all(r["em"] for r in rows))
 
     def test_run_experiment_skips_failed_question_without_writing(self):
         sample = [

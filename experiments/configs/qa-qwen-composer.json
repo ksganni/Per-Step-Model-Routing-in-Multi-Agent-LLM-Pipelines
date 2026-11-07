@@ -1,0 +1,8 @@
+{
+  "qa": {
+    "qa.decomposer": "flash",
+    "qa.hop_reader": "flash",
+    "qa.composer": "qwen",
+    "qa.formatter": "flash"
+  }
+}
