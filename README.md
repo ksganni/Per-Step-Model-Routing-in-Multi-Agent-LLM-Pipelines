@@ -52,6 +52,8 @@ Question + Supporting Documents
 
 ```
 ├── run_pipeline.py              # Runs the full pipeline end-to-end via call()
+├── experiment_runner.py         # Runs a routing config over the samples, logs CSV rows, scores them
+├── aggregate_results.py         # Merges results CSVs; per-config and per-step summaries
 ├── harness/
 │   ├── client.py                # LiteLLM wrapper — call(model, messages) with cost tracking
 │   ├── cache.py                 # Disk cache for reproducible reruns
@@ -88,7 +90,11 @@ Question + Supporting Documents
 │   ├── bird_sample_150.json     # 150 BIRD questions (stratified by difficulty)
 │   └── hotpot_sample_150.json   # 150 HotpotQA questions (stratified by type)
 │
-├── experiments/                 # Experiment run outputs (generated)
+├── experiments/
+│   ├── configs/                 # Routing configs (which model serves each step)
+│   ├── all_results.csv          # Every result row, one column layout (generated)
+│   ├── config_summary.csv       # Accuracy, cost, propagation per config (generated)
+│   └── summary.csv              # Per-step model recommendation (generated)
 ├── reports/
 │   └── data_summary.md          # Dataset statistics
 ├── .github/workflows/ci.yml    # GitHub Actions — runs all tests on every PR
@@ -153,6 +159,31 @@ Each pipeline step is tested with every model tier. For each combination we meas
 - **Error propagation** — when a step uses a weaker model, how often does its error survive to the final answer vs. get corrected downstream?
 
 The experiment matrix is 3 models × 3 SQL steps × 150 sampled questions, plus 3 models × 4 QA steps × 150 sampled questions.
+
+### Aggregating results
+
+`aggregate_results.py` merges the results CSVs from every config run and writes
+`experiments/all_results.csv`, `experiments/config_summary.csv` (one row per
+config) and `experiments/summary.csv` (one row per step and model option, with
+`recommended` set on the option to use).
+
+```bash
+python aggregate_results.py                                      # default experiments/ layout
+python aggregate_results.py --inputs "experiments/sql/*.csv" experiments/qa_results.csv
+python aggregate_results.py --tolerance 3                        # stricter accuracy tolerance
+```
+
+Recommendation rule, per step: keep the options whose accuracy is within
+`--tolerance` percentage points of the all-strong baseline (default 5, since one
+question in 150 is 0.67 points and the sampling noise is about 4 points), then
+pick the cheapest per question. Ties go to the strong model.
+
+`config_summary.csv` reports two propagation measures. `propagation_rate` is the
+share of judged questions with `error_propagated` True (needs step rows run with
+`--baseline`, so it is blank for the QA matrix, which writes question rows).
+`right_to_wrong_rate` is the share of questions the baseline got right that the
+config got wrong; it works on any rows but does not check whether the weak step's
+output changed, so it is an upper bound, not the same number.
 
 ## Team
 
