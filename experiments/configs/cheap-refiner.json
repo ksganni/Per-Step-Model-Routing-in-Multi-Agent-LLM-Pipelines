@@ -1,0 +1,7 @@
+{
+  "sql": {
+    "sql.selector": "flash",
+    "sql.decomposer": "flash",
+    "sql.refiner": "flash-lite"
+  }
+}
