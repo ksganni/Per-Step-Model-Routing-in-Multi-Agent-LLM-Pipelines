@@ -54,6 +54,7 @@ Question + Supporting Documents
 ├── run_pipeline.py              # Runs the full pipeline end-to-end via call()
 ├── experiment_runner.py         # Runs a routing config over the samples, logs CSV rows, scores them
 ├── aggregate_results.py         # Merges results CSVs; per-config and per-step summaries
+├── compute_metrics.py           # CIs, paired significance tests, propagation, Pareto frontier
 ├── harness/
 │   ├── client.py                # LiteLLM wrapper — call(model, messages) with cost tracking
 │   ├── cache.py                 # Disk cache for reproducible reruns
@@ -92,11 +93,15 @@ Question + Supporting Documents
 │
 ├── experiments/
 │   ├── configs/                 # Routing configs (which model serves each step)
+│   ├── sql/                     # SQL matrix results, one CSV per config (run_sql_matrix.py)
 │   ├── all_results.csv          # Every result row, one column layout (generated)
 │   ├── config_summary.csv       # Accuracy, cost, propagation per config (generated)
 │   └── summary.csv              # Per-step model recommendation (generated)
 ├── reports/
-│   └── data_summary.md          # Dataset statistics
+│   ├── data_summary.md          # Dataset statistics
+│   ├── metrics.json             # Every metric, CI and test (compute_metrics.py)
+│   ├── metrics_tables.md        # The same tables in Markdown, for the report
+│   └── tables/                  # One CSV per summary table
 ├── .github/workflows/ci.yml    # GitHub Actions — runs all tests on every PR
 ├── .env.example                 # API key template
 └── requirements.txt             # Python dependencies
@@ -184,6 +189,30 @@ share of judged questions with `error_propagated` True (needs step rows run with
 `right_to_wrong_rate` is the share of questions the baseline got right that the
 config got wrong; it works on any rows but does not check whether the weak step's
 output changed, so it is an upper bound, not the same number.
+
+### Metrics and significance tests
+
+`compute_metrics.py` reads the same results CSVs and writes `reports/metrics.json`,
+one CSV per table under `reports/tables/`, and `reports/metrics_tables.md`.
+
+```bash
+python compute_metrics.py                                        # default experiments/ layout
+python compute_metrics.py --inputs experiments/qa_results.csv "experiments/sql/*.csv"
+```
+
+| Table | What it holds |
+|---|---|
+| `config_quality.csv` | accuracy and EM with Wilson 95% CIs; mean F1 and cost per question with bootstrap CIs |
+| `paired_tests.csv` | each config vs all-strong on shared question_ids: McNemar exact test, paired bootstrap for F1 and cost, Holm-corrected p-values, cost ratio |
+| `error_propagation.csv` | per step and model tier: right-to-wrong rate (baseline right, config wrong) and the `error_propagated` rate where step rows have it |
+| `pareto.csv` | cost-quality frontier on each config's own questions and on the questions every config answered |
+| `step_findings.csv` | one line per (step, model): change vs all-strong, CI, cost ratio and a verdict |
+
+Verdicts: `non-inferior` when the 95% CI lower bound of the change is above
+`-margin` (default 0.05), `worse` when the upper bound is below zero and the Holm
+p-value is below 0.05, `inconclusive` otherwise, and `too few` below 20 paired
+questions. Quality is mean F1 for QA and execution accuracy for SQL. Bootstrap
+uses 10,000 resamples with seed 42, so reruns give the same numbers.
 
 ## Team
 
