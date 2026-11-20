@@ -1,3 +1,9 @@
 # Python dependencies for the model client.
 litellm>=1.87.0
 python-dotenv>=1.0.0
+
+# Sprint 5 figures (reports/plot_figures.py)
+matplotlib>=3.8.0
+seaborn>=0.13.0
+numpy>=1.26.0
+pandas>=2.0.0
