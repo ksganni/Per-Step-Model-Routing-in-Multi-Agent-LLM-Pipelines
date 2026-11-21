@@ -1,0 +1,12 @@
+pipeline,step,model,tier,config,baseline right,became wrong,right→wrong rate,95% CI,baseline wrong,wrong→right rate,error_propagated rate,95% CI,n judged
+qa,composer,Flash-Lite,cheap,qa-cheap-composer,70,2,0.029,"[0.008, 0.098]",28,0.071,,,0
+qa,composer,Qwen,local,qa-qwen-composer,57,4,0.070,"[0.028, 0.167]",26,0.115,,,0
+qa,decomposer,Flash-Lite,cheap,qa-cheap-decomposer,49,2,0.041,"[0.011, 0.137]",22,0.045,,,0
+qa,decomposer,Qwen,local,qa-qwen-decomposer,16,3,0.188,"[0.066, 0.430]",7,0.000,,,0
+qa,formatter,Flash-Lite,cheap,qa-cheap-formatter,66,2,0.030,"[0.008, 0.104]",27,0.074,,,0
+qa,formatter,Qwen,local,qa-qwen-formatter,58,6,0.103,"[0.048, 0.208]",27,0.000,,,0
+qa,hop_reader,Flash-Lite,cheap,qa-cheap-hop-reader,64,3,0.047,"[0.016, 0.129]",26,0.038,,,0
+qa,hop_reader,Qwen,local,qa-qwen-hop-reader,30,3,0.100,"[0.035, 0.256]",13,0.077,,,0
+sql,decomposer,Flash-Lite,cheap,cheap-decomposer,11,2,0.182,"[0.051, 0.477]",3,0.000,0.143,"[0.040, 0.399]",14
+sql,refiner,Flash-Lite,cheap,cheap-refiner,11,0,0.000,"[0.000, 0.259]",3,0.000,0.000,"[0.000, 0.215]",14
+sql,selector,Flash-Lite,cheap,cheap-selector,11,2,0.182,"[0.051, 0.477]",3,0.000,0.143,"[0.040, 0.399]",14
