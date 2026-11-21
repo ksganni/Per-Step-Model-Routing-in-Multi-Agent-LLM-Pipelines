@@ -30,6 +30,4 @@ minidev.zip
 # Experiment outputs (configs under experiments/configs/ stay tracked)
 experiments/results.csv
 experiments/results*.csv
-experiments/qa_results.csv
-experiments/qa_results*.csv
 experiments/runs/
