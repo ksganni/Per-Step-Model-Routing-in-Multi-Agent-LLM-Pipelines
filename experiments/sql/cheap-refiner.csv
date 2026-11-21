@@ -1,0 +1,742 @@
+config,question_id,pipeline,difficulty,step,model,tokens_in,tokens_out,cost,time_sec,raw_output,final_answer,is_correct,f1,em,error_propagated
+cheap-refiner,231,sql,challenging,sql.selector,flash,1827,788,0.00983250,0.0000,"```json
+{
+  ""atom"": ""drop_all"",
+  ""bond"": ""keep_all"",
+  ""connected"": ""drop_all"",
+  ""molecule"": ""keep_all""
+}
+```
+Question Solved.","SELECT T1.`bond_type`, T2.`label`
+FROM bond AS T1
+INNER JOIN molecule AS T2
+ON T1.`molecule_id` = T2.`molecule_id`
+WHERE T1.`molecule_id` = 'TR010'
+GROUP BY T1.`bond_type`, T2.`label`
+ORDER BY COUNT(T1.`bond_type`) DESC
+LIMIT 1",False,,,False
+cheap-refiner,231,sql,challenging,sql.decomposer,flash,2069,1530,0.01687350,0.0000,"Sub question 1: Find the bond type that accounted for the majority of the bonds found in molecule TR010.
+SQL
+```sql
+SELECT `bond_type`
+FROM bond
+WHERE `molecule_id` = 'TR010'
+GROUP BY `bond_type`
+ORDER BY COUNT(`bond_type`) DESC
+LIMIT 1
+```
+
+Sub question 2: Which bond type accounted for the majority of the bonds found in molecule TR010 and state whether or not this molecule is carcinogenic?
+SQL
+```sql
+SELECT T1.`bond_type`, T2.`label`
+FROM bond AS T1
+INNER JOIN molecule AS T2
+ON T1.`molecule_id` = T2.`molecule_id`
+WHERE T1.`molecule_id` = 'TR010'
+GROUP BY T1.`bond_type`, T2.`label`
+ORDER BY COUNT(T1.`bond_type`) DESC
+LIMIT 1
+```
+
+Question Solved.","SELECT T1.`bond_type`, T2.`label`
+FROM bond AS T1
+INNER JOIN molecule AS T2
+ON T1.`molecule_id` = T2.`molecule_id`
+WHERE T1.`molecule_id` = 'TR010'
+GROUP BY T1.`bond_type`, T2.`label`
+ORDER BY COUNT(T1.`bond_type`) DESC
+LIMIT 1",False,,,False
+cheap-refiner,1192,sql,challenging,sql.selector,flash,2890,1289,0.01593600,0.0000,"```json
+{
+  ""Examination"": ""drop_all"",
+  ""Patient"": ""keep_all"",
+  ""Laboratory"": [
+    ""T-BIL"",
+    ""Date"",
+    ""GOT"",
+    ""GPT"",
+    ""LDH"",
+    ""ALP""
+  ]
+}
+```
+Question Solved.","SELECT T1.`ID`
+  FROM Patient AS T1
+  INNER JOIN Laboratory AS T2
+  ON T1.`ID` = T2.`ID`
+  WHERE T1.`Admission` = '-'
+    AND T2.`Date` LIKE '1991-10%'
+    AND T2.`T-BIL` < 2.0",True,,,False
+cheap-refiner,1192,sql,challenging,sql.decomposer,flash,2323,1688,0.01867650,0.0000,"Sub question 1: Find the IDs of patients who underwent a laboratory test in October 1991 and had a total blood bilirubin level within the normal range.
+SQL
+```sql
+SELECT `ID`
+  FROM Laboratory
+  WHERE `Date` LIKE '1991-10%'
+    AND `T-BIL` < 2.0
+```
+
+Sub question 2: List all patients who were followed up at the outpatient clinic who underwent a laboratory test in October 1991 and had a total blood bilirubin level within the normal range.
+SQL
+```sql
+SELECT T1.`ID`
+  FROM Patient AS T1
+  INNER JOIN Laboratory AS T2
+  ON T1.`ID` = T2.`ID`
+  WHERE T1.`Admission` = '-'
+    AND T2.`Date` LIKE '1991-10%'
+    AND T2.`T-BIL` < 2.0
+```
+
+Question Solved.","SELECT T1.`ID`
+  FROM Patient AS T1
+  INNER JOIN Laboratory AS T2
+  ON T1.`ID` = T2.`ID`
+  WHERE T1.`Admission` = '-'
+    AND T2.`Date` LIKE '1991-10%'
+    AND T2.`T-BIL` < 2.0",True,,,False
+cheap-refiner,281,sql,challenging,sql.selector,flash,1809,848,0.01034550,0.0000,"```json
+{
+  ""atom"": ""keep_all"",
+  ""bond"": ""drop_all"",
+  ""connected"": ""drop_all"",
+  ""molecule"": ""keep_all""
+}
+```
+Question Solved.","SELECT T1.`element`, COUNT(*)
+  FROM atom AS T1
+  INNER JOIN molecule AS T2
+  ON T1.`molecule_id` = T2.`molecule_id`
+  WHERE T2.`label` = '+'
+  AND SUBSTR(T1.`atom_id`, 7, 1) = '4'
+  GROUP BY T1.`element`",False,,,False
+cheap-refiner,281,sql,challenging,sql.decomposer,flash,2053,1212,0.01398750,0.0000,"Sub question 1: Get the element of the 4th atom of each carcinogenic molecule.
+SQL
+```sql
+SELECT T1.`element`
+  FROM atom AS T1
+  INNER JOIN molecule AS T2
+  ON T1.`molecule_id` = T2.`molecule_id`
+  WHERE T2.`label` = '+'
+  AND SUBSTR(T1.`atom_id`, 7, 1) = '4'
+```
+
+Sub question 2: Tally the toxicology element of the 4th atom of each molecule that was carcinogenic.
+SQL
+```sql
+SELECT T1.`element`, COUNT(*)
+  FROM atom AS T1
+  INNER JOIN molecule AS T2
+  ON T1.`molecule_id` = T2.`molecule_id`
+  WHERE T2.`label` = '+'
+  AND SUBSTR(T1.`atom_id`, 7, 1) = '4'
+  GROUP BY T1.`element`
+```
+
+Question Solved.","SELECT T1.`element`, COUNT(*)
+  FROM atom AS T1
+  INNER JOIN molecule AS T2
+  ON T1.`molecule_id` = T2.`molecule_id`
+  WHERE T2.`label` = '+'
+  AND SUBSTR(T1.`atom_id`, 7, 1) = '4'
+  GROUP BY T1.`element`",False,,,False
+cheap-refiner,87,sql,challenging,sql.selector,flash,4059,1138,0.01633050,0.0000,"```json
+{
+  ""frpm"": ""drop_all"",
+  ""satscores"": ""drop_all"",
+  ""schools"": [
+    ""AdmEmail1"",
+    ""AdmEmail2"",
+    ""AdmEmail3"",
+    ""OpenDate"",
+    ""SOC"",
+    ""DOC""
+  ]
+}
+```
+Question Solved.","SELECT `AdmEmail1`
+  FROM schools
+  WHERE `OpenDate` BETWEEN '2009-01-01' AND '2010-12-31'
+    AND `SOC` = '62'
+    AND `DOC` = '54'
+    AND `AdmEmail1` IS NOT NULL",False,,,False
+cheap-refiner,87,sql,challenging,sql.decomposer,flash,2224,2511,0.02593500,0.0000,"Sub question 1: Find the CDS code of schools that opened between 1/1/2009 and 12/31/2010 with school types as public Intermediate/Middle Schools (SOC = 62) and Unified Schools (DOC = 54).
+SQL
+```sql
+SELECT `CDSCode`
+  FROM schools
+  WHERE `OpenDate` BETWEEN '2009-01-01' AND '2010-12-31'
+    AND `SOC` = '62'
+    AND `DOC` = '54'
+```
+
+Sub question 2: What are the valid e-mail addresses of the administrator of the school located in the San Bernardino county, City of San Bernardino City Unified that opened between 1/1/2009 to 12/31/2010 whose school types are public Intermediate/Middle Schools and Unified Schools?
+SQL
+```sql
+SELECT `AdmEmail1`
+  FROM schools
+  WHERE `OpenDate` BETWEEN '2009-01-01' AND '2010-12-31'
+    AND `SOC` = '62'
+    AND `DOC` = '54'
+    AND `AdmEmail1` IS NOT NULL
+```
+
+Question Solved.","SELECT `AdmEmail1`
+  FROM schools
+  WHERE `OpenDate` BETWEEN '2009-01-01' AND '2010-12-31'
+    AND `SOC` = '62'
+    AND `DOC` = '54'
+    AND `AdmEmail1` IS NOT NULL",False,,,False
+cheap-refiner,1115,sql,challenging,sql.selector,flash,6678,1100,0.01991700,0.0000,"```json
+{
+  ""Player_Attributes"": [
+    ""overall_rating"",
+    ""date"",
+    ""potential"",
+    ""preferred_foot"",
+    ""attacking_work_rate"",
+    ""defensive_work_rate""
+  ],
+  ""Player"": ""keep_all"",
+  ""League"": ""drop_all"",
+  ""Country"": ""drop_all"",
+  ""Team"": ""drop_all"",
+  ""Team_Attributes"": ""drop_all"",
+  ""Match"": ""drop_all""
+}
+```
+Question Solved.","SELECT (CAST(T2.`overall_rating` - T4.`overall_rating` AS REAL) / T2.`overall_rating`) * 100
+  FROM Player AS T1
+  INNER JOIN Player_Attributes AS T2
+  ON T1.`player_api_id` = T2.`player_api_id`
+  CROSS JOIN Player AS T3
+  INNER JOIN Player_Attributes AS T4
+  ON T3.`player_api_id` = T4.`player_api_id`
+  WHERE T1.`player_name` = 'Landon Donovan'
+  AND T3.`player_name` = 'Jordan Bowery'
+  AND T2.`date` LIKE '2013-07-12%'
+  AND T4.`date` LIKE '2013-07-12%'",True,,,False
+cheap-refiner,1115,sql,challenging,sql.decomposer,flash,2476,1988,0.02160600,0.0000,"Sub question 1: What is Landon Donovan's overall rating on 2013/7/12?
+SQL
+```sql
+SELECT T2.`overall_rating`
+  FROM Player AS T1
+  INNER JOIN Player_Attributes AS T2
+  ON T1.`player_api_id` = T2.`player_api_id`
+  WHERE T1.`player_name` = 'Landon Donovan'
+  AND T2.`date` LIKE '2013-07-12%'
+```
+
+Sub question 2: What is Jordan Bowery's overall rating on 2013/7/12?
+SQL
+```sql
+SELECT T2.`overall_rating`
+  FROM Player AS T1
+  INNER JOIN Player_Attributes AS T2
+  ON T1.`player_api_id` = T2.`player_api_id`
+  WHERE T1.`player_name` = 'Jordan Bowery'
+  AND T2.`date` LIKE '2013-07-12%'
+```
+
+Sub question 3: What percentage is Landon Donovan's overall rating higher than Jordan Bowery on 2013/7/12?
+SQL
+```sql
+SELECT (CAST(T2.`overall_rating` - T4.`overall_rating` AS REAL) / T2.`overall_rating`) * 100
+  FROM Player AS T1
+  INNER JOIN Player_Attributes AS T2
+  ON T1.`player_api_id` = T2.`player_api_id`
+  CROSS JOIN Player AS T3
+  INNER JOIN Player_Attributes AS T4
+  ON T3.`player_api_id` = T4.`player_api_id`
+  WHERE T1.`player_name` = 'Landon Donovan'
+  AND T3.`player_name` = 'Jordan Bowery'
+  AND T2.`date` LIKE '2013-07-12%'
+  AND T4.`date` LIKE '2013-07-12%'
+```
+
+Question Solved.","SELECT (CAST(T2.`overall_rating` - T4.`overall_rating` AS REAL) / T2.`overall_rating`) * 100
+  FROM Player AS T1
+  INNER JOIN Player_Attributes AS T2
+  ON T1.`player_api_id` = T2.`player_api_id`
+  CROSS JOIN Player AS T3
+  INNER JOIN Player_Attributes AS T4
+  ON T3.`player_api_id` = T4.`player_api_id`
+  WHERE T1.`player_name` = 'Landon Donovan'
+  AND T3.`player_name` = 'Jordan Bowery'
+  AND T2.`date` LIKE '2013-07-12%'
+  AND T4.`date` LIKE '2013-07-12%'",True,,,False
+cheap-refiner,1076,sql,challenging,sql.selector,flash,6688,670,0.01606200,0.0000,"```json
+{
+  ""Player_Attributes"": [
+    ""ball_control""
+  ],
+  ""Player"": ""keep_all"",
+  ""League"": ""drop_all"",
+  ""Country"": ""drop_all"",
+  ""Team"": ""drop_all"",
+  ""Team_Attributes"": ""drop_all"",
+  ""Match"": ""drop_all""
+}
+```
+Question Solved.","SELECT (
+    SELECT AVG(T1.`ball_control`)
+    FROM Player_Attributes AS T1
+    INNER JOIN Player AS T2
+    ON T1.`player_api_id` = T2.`player_api_id`
+    WHERE T2.`player_name` = 'Abdou Diallo'
+  ) - (
+    SELECT AVG(T1.`ball_control`)
+    FROM Player_Attributes AS T1
+    INNER JOIN Player AS T2
+    ON T1.`player_api_id` = T2.`player_api_id`
+    WHERE T2.`player_name` = 'Aaron Appindangoye'
+  )",True,,,False
+cheap-refiner,1076,sql,challenging,sql.decomposer,flash,2365,1683,0.01869450,0.0000,"Sub question 1: What is the average ball control score for Abdou Diallo?
+SQL
+```sql
+SELECT AVG(T1.`ball_control`)
+  FROM Player_Attributes AS T1
+  INNER JOIN Player AS T2
+  ON T1.`player_api_id` = T2.`player_api_id`
+  WHERE T2.`player_name` = 'Abdou Diallo'
+```
+
+Sub question 2: What is the average ball control score for Aaron Appindangoye?
+SQL
+```sql
+SELECT AVG(T1.`ball_control`)
+  FROM Player_Attributes AS T1
+  INNER JOIN Player AS T2
+  ON T1.`player_api_id` = T2.`player_api_id`
+  WHERE T2.`player_name` = 'Aaron Appindangoye'
+```
+
+Sub question 3: What is the difference of the average ball control score between Abdou Diallo and Aaron Appindangoye?
+SQL
+```sql
+SELECT (
+    SELECT AVG(T1.`ball_control`)
+    FROM Player_Attributes AS T1
+    INNER JOIN Player AS T2
+    ON T1.`player_api_id` = T2.`player_api_id`
+    WHERE T2.`player_name` = 'Abdou Diallo'
+  ) - (
+    SELECT AVG(T1.`ball_control`)
+    FROM Player_Attributes AS T1
+    INNER JOIN Player AS T2
+    ON T1.`player_api_id` = T2.`player_api_id`
+    WHERE T2.`player_name` = 'Aaron Appindangoye'
+  )
+```
+
+Question Solved.","SELECT (
+    SELECT AVG(T1.`ball_control`)
+    FROM Player_Attributes AS T1
+    INNER JOIN Player AS T2
+    ON T1.`player_api_id` = T2.`player_api_id`
+    WHERE T2.`player_name` = 'Abdou Diallo'
+  ) - (
+    SELECT AVG(T1.`ball_control`)
+    FROM Player_Attributes AS T1
+    INNER JOIN Player AS T2
+    ON T1.`player_api_id` = T2.`player_api_id`
+    WHERE T2.`player_name` = 'Aaron Appindangoye'
+  )",True,,,False
+cheap-refiner,1037,sql,challenging,sql.selector,flash,6672,858,0.01773000,0.0000,"```json
+{
+  ""Player_Attributes"": [
+    ""preferred_foot"",
+    ""date"",
+    ""overall_rating"",
+    ""potential"",
+    ""attacking_work_rate"",
+    ""defensive_work_rate""
+  ],
+  ""Player"": ""keep_all"",
+  ""League"": ""drop_all"",
+  ""Country"": ""drop_all"",
+  ""Team"": ""drop_all"",
+  ""Team_Attributes"": ""drop_all"",
+  ""Match"": ""drop_all""
+}
+```
+Question Solved.","SELECT CAST(SUM(CASE WHEN T2.`preferred_foot` = 'left' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.`player_fifa_api_id`)
+  FROM Player AS T1
+  INNER JOIN Player_Attributes AS T2
+  ON T1.`player_api_id` = T2.`player_api_id`
+  WHERE strftime('%Y', T1.`birthday`) BETWEEN '1987' AND '1992'",True,,,False
+cheap-refiner,1037,sql,challenging,sql.decomposer,flash,2470,3094,0.03155100,0.0000,"Sub question 1: Get the total count of players born between 1987 and 1992.
+```sql
+SELECT COUNT(T1.`player_fifa_api_id`)
+  FROM Player AS T1
+  INNER JOIN Player_Attributes AS T2
+  ON T1.`player_api_id` = T2.`player_api_id`
+  WHERE strftime('%Y', T1.`birthday`) BETWEEN '1987' AND '1992'
+```
+
+Sub question 2: Calculate the percentage of players who prefer left foot, who were born between 1987 and 1992.
+```sql
+SELECT CAST(SUM(CASE WHEN T2.`preferred_foot` = 'left' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.`player_fifa_api_id`)
+  FROM Player AS T1
+  INNER JOIN Player_Attributes AS T2
+  ON T1.`player_api_id` = T2.`player_api_id`
+  WHERE strftime('%Y', T1.`birthday`) BETWEEN '1987' AND '1992'
+```
+
+Question Solved.","SELECT CAST(SUM(CASE WHEN T2.`preferred_foot` = 'left' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.`player_fifa_api_id`)
+  FROM Player AS T1
+  INNER JOIN Player_Attributes AS T2
+  ON T1.`player_api_id` = T2.`player_api_id`
+  WHERE strftime('%Y', T1.`birthday`) BETWEEN '1987' AND '1992'",True,,,False
+cheap-refiner,1239,sql,challenging,sql.selector,flash,2878,1224,0.01533300,0.0000,"```json
+{
+  ""Examination"": ""drop_all"",
+  ""Patient"": ""keep_all"",
+  ""Laboratory"": [""HCT"", ""Date"", ""ID"", ""HGB"", ""RBC"", ""WBC""]
+}
+```
+Question Solved.","SELECT
+  T1.`ID`,
+  strftime('%Y', 'now') - strftime('%Y', T1.`Birthday`) AS `age`
+FROM Patient AS T1
+INNER JOIN Laboratory AS T2
+  ON T1.`ID` = T2.`ID`
+WHERE T2.`HCT` >= 52
+GROUP BY T1.`ID`
+HAVING COUNT(T2.`ID`) >= 2",True,,,False
+cheap-refiner,1239,sql,challenging,sql.decomposer,flash,2285,1918,0.02068950,0.0000,"Sub question 1: Find the patient IDs who have two or more laboratory examinations with a hematoclit level exceeding the normal range (HCT >= 52).
+SQL
+```sql
+SELECT T1.`ID`
+  FROM Patient AS T1
+  INNER JOIN Laboratory AS T2
+  ON T1.`ID` = T2.`ID`
+  WHERE T2.`HCT` >= 52
+  GROUP BY T1.`ID`
+  HAVING COUNT(T2.`ID`) >= 2
+```
+
+Sub question 2: Name the ID and age of patient with two or more laboratory examinations which show their hematoclit level exceeded the normal range.
+SQL
+```sql
+SELECT
+  T1.`ID`,
+  strftime('%Y', 'now') - strftime('%Y', T1.`Birthday`) AS `age`
+FROM Patient AS T1
+INNER JOIN Laboratory AS T2
+  ON T1.`ID` = T2.`ID`
+WHERE T2.`HCT` >= 52
+GROUP BY T1.`ID`
+HAVING COUNT(T2.`ID`) >= 2
+```
+
+Question Solved.","SELECT
+  T1.`ID`,
+  strftime('%Y', 'now') - strftime('%Y', T1.`Birthday`) AS `age`
+FROM Patient AS T1
+INNER JOIN Laboratory AS T2
+  ON T1.`ID` = T2.`ID`
+WHERE T2.`HCT` >= 52
+GROUP BY T1.`ID`
+HAVING COUNT(T2.`ID`) >= 2",True,,,False
+cheap-refiner,1189,sql,challenging,sql.selector,flash,2913,1554,0.01835550,0.0000,"```json
+{
+  ""Examination"": [
+    ""aCL IgM"",
+    ""ANA Pattern"",
+    ""Thrombosis"",
+    ""ANA"",
+    ""Examination Date"",
+    ""Diagnosis""
+  ],
+  ""Patient"": ""drop_all"",
+  ""Laboratory"": ""drop_all""
+}
+```
+Question Solved.","SELECT COUNT(*)
+  FROM Examination
+  WHERE `Thrombosis` = 2
+    AND `ANA Pattern` = 'S'
+    AND `aCL IgM` > (
+      SELECT AVG(`aCL IgM`) * 1.2
+      FROM Examination
+    )",True,,,False
+cheap-refiner,1189,sql,challenging,sql.decomposer,flash,2156,3537,0.03506700,0.0000,"Sub question 1: What is the average level of anti-Cardiolipin antibody (IgM)?
+SQL
+```sql
+SELECT AVG(`aCL IgM`) FROM Examination
+```
+
+Sub question 2: What number of patients with a degree of thrombosis level 2 and ANA pattern of only S, have a level of anti-Cardiolipin antibody (IgM) 20% higher than average?
+SQL
+```sql
+SELECT COUNT(*)
+  FROM Examination
+  WHERE `Thrombosis` = 2
+    AND `ANA Pattern` = 'S'
+    AND `aCL IgM` > (
+      SELECT AVG(`aCL IgM`) * 1.2
+      FROM Examination
+    )
+```
+
+Question Solved.","SELECT COUNT(*)
+  FROM Examination
+  WHERE `Thrombosis` = 2
+    AND `ANA Pattern` = 'S'
+    AND `aCL IgM` > (
+      SELECT AVG(`aCL IgM`) * 1.2
+      FROM Examination
+    )",True,,,False
+cheap-refiner,263,sql,challenging,sql.selector,flash,1817,1942,0.02020350,0.0000,"```json
+{
+  ""atom"": ""keep_all"",
+  ""bond"": ""keep_all"",
+  ""connected"": ""drop_all"",
+  ""molecule"": ""drop_all""
+}
+```
+Question Solved.","SELECT CAST(SUM(CASE WHEN T1.`element` = 'cl' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.`atom_id`)
+  FROM atom AS T1
+  INNER JOIN bond AS T2
+  ON T1.`molecule_id` = T2.`molecule_id`
+  WHERE T2.`bond_type` = '-'",True,,,False
+cheap-refiner,263,sql,challenging,sql.decomposer,flash,2117,2532,0.02596350,0.0000,"Sub question 1: Find the molecule IDs of molecules that have a single bond.
+```sql
+SELECT DISTINCT `molecule_id`
+  FROM bond
+  WHERE `bond_type` = '-'
+```
+
+Sub question 2: What is the composition of element chlorine in percentage among the single bond molecules?
+```sql
+SELECT CAST(SUM(CASE WHEN T1.`element` = 'cl' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.`atom_id`)
+  FROM atom AS T1
+  INNER JOIN bond AS T2
+  ON T1.`molecule_id` = T2.`molecule_id`
+  WHERE T2.`bond_type` = '-'
+```
+
+Question Solved.","SELECT CAST(SUM(CASE WHEN T1.`element` = 'cl' THEN 1 ELSE 0 END) AS REAL) * 100 / COUNT(T1.`atom_id`)
+  FROM atom AS T1
+  INNER JOIN bond AS T2
+  ON T1.`molecule_id` = T2.`molecule_id`
+  WHERE T2.`bond_type` = '-'",True,,,False
+cheap-refiner,477,sql,challenging,sql.selector,flash,4516,1455,0.01986900,0.0000,"```json
+{
+  ""cards"": [""artist"", ""setCode"", ""name"", ""type"", ""text"", ""manaCost""],
+  ""foreign_data"": ""drop_all"",
+  ""legalities"": ""drop_all"",
+  ""sets"": [""name"", ""code"", ""releaseDate"", ""type"", ""block"", ""baseSetSize""],
+  ""set_translations"": ""drop_all"",
+  ""rulings"": ""drop_all""
+}
+```
+Question Solved.","SELECT T1.`artist`
+FROM cards AS T1
+INNER JOIN sets AS T2
+ON T1.`setCode` = T2.`code`
+WHERE T2.`name` = 'Coldsnap'
+  AND T1.`artist` IN ('Jeremy Jarvis', 'Aaron Miller', 'Chippy')
+GROUP BY T1.`artist`",True,,,False
+cheap-refiner,477,sql,challenging,sql.decomposer,flash,2250,1204,0.01421100,0.0000,"Sub question 1: Find the set code of the set 'Coldsnap'.
+SQL
+```sql
+SELECT `code`
+FROM sets
+WHERE `name` = 'Coldsnap'
+```
+
+Sub question 2: Which of these artists (Jeremy Jarvis, Aaron Miller, or Chippy) have designed a card in the set Coldsnap?
+SQL
+```sql
+SELECT T1.`artist`
+FROM cards AS T1
+INNER JOIN sets AS T2
+ON T1.`setCode` = T2.`code`
+WHERE T2.`name` = 'Coldsnap'
+  AND T1.`artist` IN ('Jeremy Jarvis', 'Aaron Miller', 'Chippy')
+GROUP BY T1.`artist`
+```
+
+Question Solved.","SELECT T1.`artist`
+FROM cards AS T1
+INNER JOIN sets AS T2
+ON T1.`setCode` = T2.`code`
+WHERE T2.`name` = 'Coldsnap'
+  AND T1.`artist` IN ('Jeremy Jarvis', 'Aaron Miller', 'Chippy')
+GROUP BY T1.`artist`",True,,,False
+cheap-refiner,1171,sql,challenging,sql.selector,flash,2878,1043,0.01370400,0.0000,"```json
+{
+  ""Examination"": [
+    ""Examination Date"",
+    ""Diagnosis"",
+    ""Symptoms"",
+    ""Thrombosis"",
+    ""ANA"",
+    ""aCL IgG""
+  ],
+  ""Patient"": ""keep_all"",
+  ""Laboratory"": ""drop_all""
+}
+```
+Question Solved.","SELECT COUNT(DISTINCT T1.`ID`)
+FROM Examination AS T1
+INNER JOIN Patient AS T2
+ON T1.`ID` = T2.`ID`
+WHERE STRFTIME('%Y', T1.`Examination Date`) BETWEEN '1990' AND '1993'
+  AND (STRFTIME('%Y', T1.`Examination Date`) - STRFTIME('%Y', T2.`Birthday`)) < 18",True,,,False
+cheap-refiner,1171,sql,challenging,sql.decomposer,flash,2286,2394,0.02497500,0.0000,"Sub question 1: Select the IDs of underage patients who were examined between 1990 and 1993.
+SQL
+```sql
+SELECT DISTINCT T1.`ID`
+FROM Examination AS T1
+INNER JOIN Patient AS T2
+ON T1.`ID` = T2.`ID`
+WHERE STRFTIME('%Y', T1.`Examination Date`) BETWEEN '1990' AND '1993'
+  AND (STRFTIME('%Y', T1.`Examination Date`) - STRFTIME('%Y', T2.`Birthday`)) < 18
+```
+
+Sub question 2: How many underage patients were examined during the course of the three-year period from 1990 to 1993?
+SQL
+```sql
+SELECT COUNT(DISTINCT T1.`ID`)
+FROM Examination AS T1
+INNER JOIN Patient AS T2
+ON T1.`ID` = T2.`ID`
+WHERE STRFTIME('%Y', T1.`Examination Date`) BETWEEN '1990' AND '1993'
+  AND (STRFTIME('%Y', T1.`Examination Date`) - STRFTIME('%Y', T2.`Birthday`)) < 18
+```
+
+Question Solved.","SELECT COUNT(DISTINCT T1.`ID`)
+FROM Examination AS T1
+INNER JOIN Patient AS T2
+ON T1.`ID` = T2.`ID`
+WHERE STRFTIME('%Y', T1.`Examination Date`) BETWEEN '1990' AND '1993'
+  AND (STRFTIME('%Y', T1.`Examination Date`) - STRFTIME('%Y', T2.`Birthday`)) < 18",True,,,False
+cheap-refiner,212,sql,challenging,sql.selector,flash,1793,668,0.00870150,0.0000,"```json
+{
+  ""atom"": ""keep_all"",
+  ""bond"": ""drop_all"",
+  ""connected"": ""drop_all"",
+  ""molecule"": ""keep_all""
+}
+```
+Question Solved.","SELECT T1.`element`
+  FROM atom AS T1
+  INNER JOIN molecule AS T2
+  ON T1.`molecule_id` = T2.`molecule_id`
+  WHERE T2.`label` = '-'
+  GROUP BY T1.`element`
+  ORDER BY COUNT(*) ASC
+  LIMIT 1",True,,,False
+cheap-refiner,212,sql,challenging,sql.decomposer,flash,2037,1105,0.01300050,0.0000,"Sub question 1: Count the occurrence of each element in non-carcinogenic molecules.
+SQL
+```sql
+SELECT T1.`element`, COUNT(*)
+  FROM atom AS T1
+  INNER JOIN molecule AS T2
+  ON T1.`molecule_id` = T2.`molecule_id`
+  WHERE T2.`label` = '-'
+  GROUP BY T1.`element`
+```
+
+Sub question 2: Which element is the least numerous in non-carcinogenic molecules?
+SQL
+```sql
+SELECT T1.`element`
+  FROM atom AS T1
+  INNER JOIN molecule AS T2
+  ON T1.`molecule_id` = T2.`molecule_id`
+  WHERE T2.`label` = '-'
+  GROUP BY T1.`element`
+  ORDER BY COUNT(*) ASC
+  LIMIT 1
+```
+
+Question Solved.","SELECT T1.`element`
+  FROM atom AS T1
+  INNER JOIN molecule AS T2
+  ON T1.`molecule_id` = T2.`molecule_id`
+  WHERE T2.`label` = '-'
+  GROUP BY T1.`element`
+  ORDER BY COUNT(*) ASC
+  LIMIT 1",True,,,False
+cheap-refiner,769,sql,challenging,sql.selector,flash,2286,1419,0.01620000,0.0000,"```json
+{
+  ""alignment"": ""drop_all"",
+  ""attribute"": ""keep_all"",
+  ""colour"": ""drop_all"",
+  ""gender"": ""drop_all"",
+  ""publisher"": ""keep_all"",
+  ""race"": ""drop_all"",
+  ""superhero"": [
+    ""superhero_name"",
+    ""publisher_id"",
+    ""id"",
+    ""full_name"",
+    ""height_cm"",
+    ""weight_kg""
+  ],
+  ""hero_attribute"": ""keep_all"",
+  ""superpower"": ""drop_all"",
+  ""hero_power"": ""drop_all""
+}
+```
+Question Solved.","SELECT T3.`superhero_name`
+  FROM hero_attribute AS T1
+  INNER JOIN attribute AS T2
+    ON T1.`attribute_id` = T2.`id`
+  INNER JOIN superhero AS T3
+    ON T1.`hero_id` = T3.`id`
+  INNER JOIN publisher AS T4
+    ON T3.`publisher_id` = T4.`id`
+  WHERE T2.`attribute_name` = 'Durability'
+    AND T4.`publisher_name` = 'Dark Horse Comics'
+  ORDER BY T1.`attribute_value` DESC
+  LIMIT 1",True,,,False
+cheap-refiner,769,sql,challenging,sql.decomposer,flash,2510,2412,0.02547300,0.0000,"Sub question 1: What is the highest durability value for superheroes published by Dark Horse Comics?
+SQL
+```sql
+SELECT MAX(T1.`attribute_value`)
+  FROM hero_attribute AS T1
+  INNER JOIN attribute AS T2
+    ON T1.`attribute_id` = T2.`id`
+  INNER JOIN superhero AS T3
+    ON T1.`hero_id` = T3.`id`
+  INNER JOIN publisher AS T4
+    ON T3.`publisher_id` = T4.`id`
+  WHERE T2.`attribute_name` = 'Durability'
+    AND T4.`publisher_name` = 'Dark Horse Comics'
+```
+
+Sub question 2: Which superhero has the most durability published by Dark Horse Comics?
+SQL
+```sql
+SELECT T3.`superhero_name`
+  FROM hero_attribute AS T1
+  INNER JOIN attribute AS T2
+    ON T1.`attribute_id` = T2.`id`
+  INNER JOIN superhero AS T3
+    ON T1.`hero_id` = T3.`id`
+  INNER JOIN publisher AS T4
+    ON T3.`publisher_id` = T4.`id`
+  WHERE T2.`attribute_name` = 'Durability'
+    AND T4.`publisher_name` = 'Dark Horse Comics'
+  ORDER BY T1.`attribute_value` DESC
+  LIMIT 1
+```
+
+Question Solved.","SELECT T3.`superhero_name`
+  FROM hero_attribute AS T1
+  INNER JOIN attribute AS T2
+    ON T1.`attribute_id` = T2.`id`
+  INNER JOIN superhero AS T3
+    ON T1.`hero_id` = T3.`id`
+  INNER JOIN publisher AS T4
+    ON T3.`publisher_id` = T4.`id`
+  WHERE T2.`attribute_name` = 'Durability'
+    AND T4.`publisher_name` = 'Dark Horse Comics'
+  ORDER BY T1.`attribute_value` DESC
+  LIMIT 1",True,,,False
