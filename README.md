@@ -210,8 +210,9 @@ python compute_metrics.py --inputs experiments/qa_results.csv "experiments/sql/*
 
 Verdicts: `non-inferior` when the 95% CI lower bound of the change is above
 `-margin` (default 0.05), `worse` when the upper bound is below zero and the Holm
-p-value is below 0.05, `inconclusive` otherwise, and `too few` below 20 paired
-questions. Quality is mean F1 for QA and execution accuracy for SQL. Bootstrap
+p-value is below 0.05, `worse (unadjusted)` when the upper bound is below zero but
+the drop does not survive the Holm correction, `inconclusive` otherwise, and
+`too few` below 20 paired questions. Quality is mean F1 for QA and execution accuracy for SQL. Bootstrap
 uses 10,000 resamples with seed 42, so reruns give the same numbers.
 
 ## Team

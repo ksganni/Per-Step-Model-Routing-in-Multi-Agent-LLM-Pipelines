@@ -39,6 +39,9 @@ What is computed, per pipeline (sql, qa):
        too few        fewer than 20 paired questions; no verdict
        non-inferior   CI lower bound above -margin (default 0.05)
        worse          CI upper bound below 0 and Holm p below alpha
+       worse (unadjusted)  CI upper bound below 0 but the Holm p is not below
+                      alpha: a drop for that comparison alone, which does not
+                      survive the correction for the other steps tested
        inconclusive   anything else
    "non-inferior" is the claim the report needs for "this step tolerates a
    cheaper model"; a non-significant difference alone does not support it.
@@ -57,6 +60,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import random
@@ -169,6 +173,15 @@ def bonett_price_ci(b: int, c: int, n: int, z: float = Z95) -> tuple[float | Non
     diff = pc - pb
     half = z * math.sqrt(max(0.0, pc + pb - diff * diff) / (n + 2))
     return (max(-1.0, diff - half), min(1.0, diff + half))
+
+
+def file_sha256(path) -> str:
+    """Hash of an input file, so a table can be traced to the exact data."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for block in iter(lambda: fh.read(1 << 16), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def mcnemar_exact(b: int, c: int) -> float:
@@ -476,6 +489,8 @@ def step_findings(comparisons: list[dict], primary: str, margin: float, alpha: f
             verdict = "non-inferior"
         elif hi < 0 and p is not None and p < alpha:
             verdict = "worse"
+        elif hi < 0:
+            verdict = "worse (unadjusted)"
         else:
             verdict = "inconclusive"
         out.append({
@@ -594,7 +609,8 @@ def write_outputs(result: dict, out_dir: Path) -> list[Path]:
     tables = build_tables(result)
     md = ["# Summary tables", "",
           f"Generated {result['meta']['generated_at']} by `compute_metrics.py` from "
-          f"{', '.join(result['meta']['inputs'])}. "
+          f"{', '.join(result['meta']['inputs'])} "
+          f"(sha256 prefixes: {', '.join(h[:12] for h in result['meta']['input_sha256'].values())}). "
           f"95% CIs: Wilson for proportions, Bonett-Price for paired accuracy differences, "
           f"percentile bootstrap ({result['meta']['bootstrap_resamples']} resamples, "
           f"seed {result['meta']['seed']}) for means and paired F1 and cost differences. "
@@ -610,7 +626,7 @@ def write_outputs(result: dict, out_dir: Path) -> list[Path]:
     for name, (header, rows) in tables.items():
         path = tables_dir / f"{name}.csv"
         with path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.writer(f)
+            writer = csv.writer(f, lineterminator="\n")
             writer.writerow(header)
             writer.writerows(rows)
         written.append(path)
@@ -643,15 +659,20 @@ def compute(inputs: list[Path], *, config_dir: Path = agg.CONFIG_DIR, resamples:
         if small:
             warnings.append(f"{pipeline}: fewer than {MIN_COMMON} questions for {', '.join(small)}; "
                             "treat those intervals as indicative only")
-        if res["pareto"]["common_questions"]["n_common"] < MIN_COMMON:
-            warnings.append(f"{pipeline}: only {res['pareto']['common_questions']['n_common']} question_ids "
+        n_common = res["pareto"]["common_questions"]["n_common"]
+        if n_common < MIN_COMMON:
+            warnings.append(f"{pipeline}: only {n_common} question_ids "
                             f"shared by every config (< {MIN_COMMON}); common-ids frontier not computed")
+        else:
+            warnings.append(f"{pipeline}: the common-ids frontier is based on the {n_common} question_ids "
+                            "every config answered")
         pipelines[pipeline] = res
     return {
         "meta": {
             "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             "script": "compute_metrics.py",
             "inputs": [str(p) for p in inputs],
+            "input_sha256": {str(p): file_sha256(p) for p in inputs},
             "n_question_records": len(qrows),
             "bootstrap_resamples": resamples,
             "seed": seed,
@@ -670,7 +691,8 @@ def compute(inputs: list[Path], *, config_dir: Path = agg.CONFIG_DIR, resamples:
                 "delta_f1_ci": "percentile bootstrap interval of the mean paired F1 difference",
                 "verdict": f"too few if fewer than {MIN_PAIRED} paired questions; non-inferior if CI lower "
                            f"bound > -{margin}; worse if CI upper bound < 0 and Holm p < {alpha}; "
-                           "otherwise inconclusive",
+                           "worse (unadjusted) if CI upper bound < 0 but Holm p is not below "
+                           f"{alpha}; otherwise inconclusive",
             },
         },
         "pipelines": pipelines,

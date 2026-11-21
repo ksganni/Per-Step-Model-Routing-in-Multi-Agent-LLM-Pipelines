@@ -184,6 +184,14 @@ class EndToEndTests(unittest.TestCase):
         sql = res["pipelines"]["sql"]["step_findings"]
         self.assertEqual([f["verdict"] for f in sql], ["too few"])
 
+    def test_unadjusted_drop_is_labelled(self):
+        base = {"weak_step": "formatter", "weak_model": "qwen", "tier": "local", "config": "x",
+                "n_paired": 85, "cost_ratio": 0.86, "right_to_wrong_rate": 0.1,
+                "delta_f1": -0.07, "delta_f1_ci": [-0.13, -0.02]}
+        verdicts = [cm.step_findings([dict(base, p_f1_bootstrap_holm=p)], "mean_f1", 0.05, 0.05)[0]["verdict"]
+                    for p in (0.01, 0.10)]
+        self.assertEqual(verdicts, ["worse", "worse (unadjusted)"])
+
     def test_no_change_on_few_questions_is_not_non_inferior(self):
         res = self.run_compute()
         cheap = self.comparison(res, "qa", "qa-cheap-decomposer")
@@ -229,6 +237,12 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("fewer than", warnings)
         self.assertEqual(res["pipelines"]["sql"]["comparisons"], [])
 
+    def test_meta_records_input_hashes(self):
+        res = self.run_compute()
+        hashes = res["meta"]["input_sha256"]
+        self.assertEqual(set(hashes), set(res["meta"]["inputs"]))
+        self.assertTrue(all(len(h) == 64 for h in hashes.values()))
+
     def test_reproducible_with_seed(self):
         a = self.run_compute(seed=11)
         b = self.run_compute(seed=11)
@@ -246,6 +260,7 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(set(data["pipelines"]), {"qa", "sql"})
         for name in ("config_quality", "paired_tests", "error_propagation", "pareto", "step_findings"):
             self.assertTrue((out / "tables" / f"{name}.csv").is_file(), name)
+            self.assertNotIn(b"\r", (out / "tables" / f"{name}.csv").read_bytes(), name)
         md = (out / "metrics_tables.md").read_text()
         self.assertIn("## Step findings", md)
         self.assertIn("non-inferior", md)
