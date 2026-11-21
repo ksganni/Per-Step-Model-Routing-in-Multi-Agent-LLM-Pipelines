@@ -1,0 +1,16 @@
+source: /Users/krishnasathvikaganni/Downloads/capstone/Per-Step-Model-Routing-in-Multi-Agent-LLM-Pipelines/experiments/qa_results.csv
+total QA rows: 693
+all-strong n=107 F1=0.794 cost=$0.0272
+recommended routing: decomposer=flash-lite, hop_reader=flash-lite, composer=flash-lite, formatter=flash-lite
+SQL cheap-selector rows available: 12 (QA Sankey used above).
+figures:
+  accuracy_cost_heatmap.png
+  error_propagation_sankey.png
+  routing_map.png
+  cost_savings_bars.png
+  config_overview.png
+  f1_vs_cost_scatter.png
+  f1_drop_by_step.png
+  sample_coverage.png
+  propagation_rate_bars.png
+  em_vs_f1_by_config.png
