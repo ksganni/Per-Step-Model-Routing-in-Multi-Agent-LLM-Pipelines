@@ -1,0 +1,14 @@
+pipeline,config,quality metric,n,quality,cost/q ($),on frontier,dominated by,quality (common ids),cost/q (common ids),on frontier (common ids)
+qa,qa-all-strong,mean_f1,107,0.794,0.02718,no,"qa-cheap-composer, qa-cheap-decomposer, qa-cheap-formatter",0.824,0.02765,no
+qa,qa-cheap-composer,mean_f1,98,0.798,0.02411,no,"qa-cheap-decomposer, qa-cheap-formatter",0.812,0.02511,no
+qa,qa-qwen-composer,mean_f1,83,0.770,0.02427,no,"qa-cheap-composer, qa-cheap-decomposer, qa-cheap-formatter, qa-cheap-hop-reader, qa-qwen-hop-reader",0.806,0.02492,no
+qa,qa-cheap-decomposer,mean_f1,71,0.799,0.02003,yes,,0.812,0.01876,yes
+qa,qa-qwen-decomposer,mean_f1,23,0.674,0.02139,no,"qa-cheap-decomposer, qa-cheap-hop-reader, qa-qwen-hop-reader",0.674,0.02139,no
+qa,qa-cheap-formatter,mean_f1,93,0.813,0.02309,yes,,0.824,0.02451,yes
+qa,qa-qwen-formatter,mean_f1,85,0.719,0.02337,no,"qa-cheap-decomposer, qa-cheap-formatter, qa-cheap-hop-reader, qa-qwen-hop-reader",0.780,0.02438,no
+qa,qa-cheap-hop-reader,mean_f1,90,0.783,0.01712,yes,,0.746,0.01820,no
+qa,qa-qwen-hop-reader,mean_f1,43,0.781,0.01726,no,qa-cheap-hop-reader,0.746,0.01719,yes
+sql,all-flash,accuracy,14,0.786,0.03752,yes,,,,
+sql,cheap-decomposer,accuracy,14,0.643,0.02227,yes,,,,
+sql,cheap-refiner,accuracy,14,0.786,0.03752,yes,,,,
+sql,cheap-selector,accuracy,14,0.643,0.02653,no,cheap-decomposer,,,

@@ -1,0 +1,1620 @@
+{
+  "meta": {
+    "generated_at": "2026-11-21 15:25 UTC",
+    "script": "compute_metrics.py",
+    "inputs": [
+      "experiments/sql/all-flash.csv",
+      "experiments/sql/cheap-decomposer.csv",
+      "experiments/sql/cheap-refiner.csv",
+      "experiments/sql/cheap-selector.csv",
+      "experiments/qa_results.csv"
+    ],
+    "input_sha256": {
+      "experiments/sql/all-flash.csv": "f3f8f0f7a0f00b1560d48019df898635e7226874a247232415d429f1a42143a4",
+      "experiments/sql/cheap-decomposer.csv": "dcb9b6ac51107c9c97eea5c42529fde70c75fa2d659d90f35d00a97e6165f991",
+      "experiments/sql/cheap-refiner.csv": "c16599b8bb16060eedbcaa4ea46e2c7b6ebf293dca7e4f1bb26cdfe1e1612693",
+      "experiments/sql/cheap-selector.csv": "900b604d93c377164be68bb76f51f74f24728bb2f616d9e5cafcda29e485a8e3",
+      "experiments/qa_results.csv": "2dd3406d00e74446f1449b9e2198a62d3e128656153d769a76e95cd9b98d0678"
+    },
+    "n_question_records": 749,
+    "bootstrap_resamples": 10000,
+    "seed": 42,
+    "ci_level": 0.95,
+    "margin": 0.05,
+    "alpha": 0.05,
+    "definitions": {
+      "accuracy": "share of scored questions with is_correct True (QA: EM or token F1 >= 0.8)",
+      "mean_f1": "mean token F1 over questions with an f1 value (QA only)",
+      "right_to_wrong_rate": "of questions the baseline got right, share the config got wrong",
+      "propagation_rate": "share of judged questions with error_propagated True (needs step rows run with --baseline)",
+      "cost_ratio": "config cost / baseline cost summed over paired questions",
+      "p_holm": "Holm-Bonferroni adjusted within pipeline and metric",
+      "delta_accuracy_ci": "Bonett-Price adjusted Wald interval for the paired difference",
+      "delta_f1_ci": "percentile bootstrap interval of the mean paired F1 difference",
+      "verdict": "too few if fewer than 20 paired questions; non-inferior if CI lower bound > -0.05; worse if CI upper bound < 0 and Holm p < 0.05; worse (unadjusted) if CI upper bound < 0 but Holm p is not below 0.05; otherwise inconclusive"
+    }
+  },
+  "pipelines": {
+    "qa": {
+      "primary_metric": "mean_f1",
+      "baseline": "qa-all-strong",
+      "configs": [
+        {
+          "config": "qa-all-strong",
+          "weak_step": "",
+          "weak_model": "",
+          "tier": "strong",
+          "is_baseline": true,
+          "n_questions": 107,
+          "n_scored": 107,
+          "accuracy": 0.7102803738317757,
+          "accuracy_ci": [
+            0.6182285373827988,
+            0.787756736347634
+          ],
+          "n_f1": 107,
+          "mean_f1": 0.7938018691588785,
+          "mean_f1_ci": [
+            0.7303400700934579,
+            0.8531545794392522
+          ],
+          "n_em": 107,
+          "em_rate": 0.6074766355140186,
+          "em_rate_ci": [
+            0.5127690996854534,
+            0.6947344846656566
+          ],
+          "cost_per_question": 0.027179747663551402,
+          "cost_per_question_ci": [
+            0.02529196296728972,
+            0.02920925922897196
+          ],
+          "total_cost": 2.908233,
+          "pareto_dominated_by": [
+            "qa-cheap-composer",
+            "qa-cheap-decomposer",
+            "qa-cheap-formatter"
+          ],
+          "on_pareto_frontier": false
+        },
+        {
+          "config": "qa-cheap-composer",
+          "weak_step": "qa.composer",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "is_baseline": false,
+          "n_questions": 98,
+          "n_scored": 98,
+          "accuracy": 0.7142857142857143,
+          "accuracy_ci": [
+            0.6180933267840759,
+            0.7943123917352038
+          ],
+          "n_f1": 98,
+          "mean_f1": 0.7976867346938775,
+          "mean_f1_ci": [
+            0.7297272448979593,
+            0.8614074489795919
+          ],
+          "n_em": 98,
+          "em_rate": 0.6428571428571429,
+          "em_rate_ci": [
+            0.5442524878517956,
+            0.7306846578277244
+          ],
+          "cost_per_question": 0.024106940816326528,
+          "cost_per_question_ci": [
+            0.022288392142857143,
+            0.02612437076530612
+          ],
+          "total_cost": 2.3624802,
+          "pareto_dominated_by": [
+            "qa-cheap-decomposer",
+            "qa-cheap-formatter"
+          ],
+          "on_pareto_frontier": false
+        },
+        {
+          "config": "qa-qwen-composer",
+          "weak_step": "qa.composer",
+          "weak_model": "qwen",
+          "tier": "local",
+          "is_baseline": false,
+          "n_questions": 83,
+          "n_scored": 83,
+          "accuracy": 0.6746987951807228,
+          "accuracy_ci": [
+            0.5681352168462454,
+            0.7658066629174022
+          ],
+          "n_f1": 83,
+          "mean_f1": 0.7699204819277108,
+          "mean_f1_ci": [
+            0.6934755722891567,
+            0.8417727108433734
+          ],
+          "n_em": 83,
+          "em_rate": 0.6024096385542169,
+          "em_rate_ci": [
+            0.49484835006906513,
+            0.7009106828958319
+          ],
+          "cost_per_question": 0.024270397590361446,
+          "cost_per_question_ci": [
+            0.022139759186746988,
+            0.02658617078313253
+          ],
+          "total_cost": 2.014443,
+          "pareto_dominated_by": [
+            "qa-cheap-composer",
+            "qa-cheap-decomposer",
+            "qa-cheap-formatter",
+            "qa-cheap-hop-reader",
+            "qa-qwen-hop-reader"
+          ],
+          "on_pareto_frontier": false
+        },
+        {
+          "config": "qa-cheap-decomposer",
+          "weak_step": "qa.decomposer",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "is_baseline": false,
+          "n_questions": 71,
+          "n_scored": 71,
+          "accuracy": 0.676056338028169,
+          "accuracy_ci": [
+            0.5606115705582948,
+            0.7734278828935044
+          ],
+          "n_f1": 71,
+          "mean_f1": 0.7992887323943662,
+          "mean_f1_ci": [
+            0.7224933098591549,
+            0.8685292253521127
+          ],
+          "n_em": 71,
+          "em_rate": 0.6338028169014085,
+          "em_rate_ci": [
+            0.5175721979631125,
+            0.7362977866602549
+          ],
+          "cost_per_question": 0.02003165070422535,
+          "cost_per_question_ci": [
+            0.018368632464788735,
+            0.02183317457746479
+          ],
+          "total_cost": 1.4222472,
+          "pareto_dominated_by": [],
+          "on_pareto_frontier": true
+        },
+        {
+          "config": "qa-qwen-decomposer",
+          "weak_step": "qa.decomposer",
+          "weak_model": "qwen",
+          "tier": "local",
+          "is_baseline": false,
+          "n_questions": 23,
+          "n_scored": 23,
+          "accuracy": 0.5652173913043478,
+          "accuracy_ci": [
+            0.3681137508501646,
+            0.743653646743258
+          ],
+          "n_f1": 23,
+          "mean_f1": 0.6739173913043478,
+          "mean_f1_ci": [
+            0.49276086956521736,
+            0.8405826086956523
+          ],
+          "n_em": 23,
+          "em_rate": 0.5652173913043478,
+          "em_rate_ci": [
+            0.3681137508501646,
+            0.743653646743258
+          ],
+          "cost_per_question": 0.021387652173913044,
+          "cost_per_question_ci": [
+            0.018248528804347828,
+            0.025199869565217393
+          ],
+          "total_cost": 0.491916,
+          "pareto_dominated_by": [
+            "qa-cheap-decomposer",
+            "qa-cheap-hop-reader",
+            "qa-qwen-hop-reader"
+          ],
+          "on_pareto_frontier": false
+        },
+        {
+          "config": "qa-cheap-formatter",
+          "weak_step": "qa.formatter",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "is_baseline": false,
+          "n_questions": 93,
+          "n_scored": 93,
+          "accuracy": 0.7096774193548387,
+          "accuracy_ci": [
+            0.6105740949932597,
+            0.7921459845566579
+          ],
+          "n_f1": 93,
+          "mean_f1": 0.8131247311827956,
+          "mean_f1_ci": [
+            0.7506718548387098,
+            0.8720283602150537
+          ],
+          "n_em": 93,
+          "em_rate": 0.6344086021505376,
+          "em_rate_ci": [
+            0.533010918790097,
+            0.7251429783572861
+          ],
+          "cost_per_question": 0.023090960215053764,
+          "cost_per_question_ci": [
+            0.021200384059139786,
+            0.02515162096774193
+          ],
+          "total_cost": 2.1474593,
+          "pareto_dominated_by": [],
+          "on_pareto_frontier": true
+        },
+        {
+          "config": "qa-qwen-formatter",
+          "weak_step": "qa.formatter",
+          "weak_model": "qwen",
+          "tier": "local",
+          "is_baseline": false,
+          "n_questions": 85,
+          "n_scored": 85,
+          "accuracy": 0.611764705882353,
+          "accuracy_ci": [
+            0.5054771123296355,
+            0.7083870030531059
+          ],
+          "n_f1": 85,
+          "mean_f1": 0.7186588235294118,
+          "mean_f1_ci": [
+            0.6363444705882352,
+            0.796977794117647
+          ],
+          "n_em": 85,
+          "em_rate": 0.5411764705882353,
+          "em_rate_ci": [
+            0.4357633606996252,
+            0.6430286818098059
+          ],
+          "cost_per_question": 0.023374376470588237,
+          "cost_per_question_ci": [
+            0.02130532455882353,
+            0.025625553529411763
+          ],
+          "total_cost": 1.986822,
+          "pareto_dominated_by": [
+            "qa-cheap-decomposer",
+            "qa-cheap-formatter",
+            "qa-cheap-hop-reader",
+            "qa-qwen-hop-reader"
+          ],
+          "on_pareto_frontier": false
+        },
+        {
+          "config": "qa-cheap-hop-reader",
+          "weak_step": "qa.hop_reader",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "is_baseline": false,
+          "n_questions": 90,
+          "n_scored": 90,
+          "accuracy": 0.6888888888888889,
+          "accuracy_ci": [
+            0.5871717545902345,
+            0.7751414535299087
+          ],
+          "n_f1": 90,
+          "mean_f1": 0.7833499999999999,
+          "mean_f1_ci": [
+            0.7109303888888889,
+            0.850356611111111
+          ],
+          "n_em": 90,
+          "em_rate": 0.6111111111111112,
+          "em_rate_ci": [
+            0.5078245886506263,
+            0.7053008278906345
+          ],
+          "cost_per_question": 0.017121404444444446,
+          "cost_per_question_ci": [
+            0.01573192002777778,
+            0.018670081416666668
+          ],
+          "total_cost": 1.5409264,
+          "pareto_dominated_by": [],
+          "on_pareto_frontier": true
+        },
+        {
+          "config": "qa-qwen-hop-reader",
+          "weak_step": "qa.hop_reader",
+          "weak_model": "qwen",
+          "tier": "local",
+          "is_baseline": false,
+          "n_questions": 43,
+          "n_scored": 43,
+          "accuracy": 0.6511627906976745,
+          "accuracy_ci": [
+            0.5017178199285205,
+            0.775814100026473
+          ],
+          "n_f1": 43,
+          "mean_f1": 0.7811767441860465,
+          "mean_f1_ci": [
+            0.6722041860465117,
+            0.8764139534883721
+          ],
+          "n_em": 43,
+          "em_rate": 0.6511627906976745,
+          "em_rate_ci": [
+            0.5017178199285205,
+            0.775814100026473
+          ],
+          "cost_per_question": 0.017264441860465118,
+          "cost_per_question_ci": [
+            0.015164797674418605,
+            0.019648987499999996
+          ],
+          "total_cost": 0.742371,
+          "pareto_dominated_by": [
+            "qa-cheap-hop-reader"
+          ],
+          "on_pareto_frontier": false
+        }
+      ],
+      "comparisons": [
+        {
+          "config": "qa-cheap-composer",
+          "weak_step": "qa.composer",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "n_paired": 98,
+          "n_paired_scored": 98,
+          "delta_accuracy": 0.0,
+          "delta_accuracy_ci": [
+            -0.04800911676355309,
+            0.04800911676355309
+          ],
+          "delta_accuracy_ci_bootstrap": [
+            -0.04081632653061224,
+            0.04081632653061224
+          ],
+          "p_accuracy_bootstrap": 1.0,
+          "p_accuracy_mcnemar": 1.0,
+          "n_paired_f1": 98,
+          "delta_f1": -0.007110204081632653,
+          "delta_f1_ci": [
+            -0.03806224489795919,
+            0.01827280612244895
+          ],
+          "p_f1_bootstrap": 0.6112388761123888,
+          "delta_cost": -0.003189814285714286,
+          "delta_cost_ci": [
+            -0.0035842546428571428,
+            -0.0027964240561224496
+          ],
+          "p_cost_bootstrap": 9.999000099990002e-05,
+          "cost_ratio": 0.8831430961742476,
+          "baseline_right_config_wrong": 2,
+          "baseline_wrong_config_right": 2,
+          "both_right": 68,
+          "both_wrong": 26,
+          "n_baseline_right": 70,
+          "right_to_wrong_rate": 0.02857142857142857,
+          "right_to_wrong_ci": [
+            0.007870611945441225,
+            0.09832256118423902
+          ],
+          "n_baseline_wrong": 28,
+          "wrong_to_right_rate": 0.07142857142857142,
+          "wrong_to_right_ci": [
+            0.019812064115305755,
+            0.22645362568399052
+          ],
+          "n_judged": 0,
+          "n_propagated": 0,
+          "propagation_rate": null,
+          "propagation_ci": [
+            null,
+            null
+          ],
+          "p_accuracy_mcnemar_holm": 1.0,
+          "p_accuracy_bootstrap_holm": 1.0,
+          "p_f1_bootstrap_holm": 1.0,
+          "p_cost_bootstrap_holm": 0.0007999200079992001
+        },
+        {
+          "config": "qa-qwen-composer",
+          "weak_step": "qa.composer",
+          "weak_model": "qwen",
+          "tier": "local",
+          "n_paired": 83,
+          "n_paired_scored": 83,
+          "delta_accuracy": -0.012048192771084338,
+          "delta_accuracy_ci": [
+            -0.08089467800303714,
+            0.057365266238331256
+          ],
+          "delta_accuracy_ci_bootstrap": [
+            -0.07228915662650602,
+            0.04819277108433735
+          ],
+          "p_accuracy_bootstrap": 0.8447155284471553,
+          "p_accuracy_mcnemar": 1.0,
+          "n_paired_f1": 83,
+          "delta_f1": -0.023695180722891566,
+          "delta_f1_ci": [
+            -0.07108433734939759,
+            0.016465060240963857
+          ],
+          "p_f1_bootstrap": 0.28377162283771623,
+          "delta_cost": -0.0030733734939759035,
+          "delta_cost_ci": [
+            -0.0035031424698795184,
+            -0.0025957378012048194
+          ],
+          "p_cost_bootstrap": 9.999000099990002e-05,
+          "cost_ratio": 0.8876024274597454,
+          "baseline_right_config_wrong": 4,
+          "baseline_wrong_config_right": 3,
+          "both_right": 53,
+          "both_wrong": 23,
+          "n_baseline_right": 57,
+          "right_to_wrong_rate": 0.07017543859649122,
+          "right_to_wrong_ci": [
+            0.027626420229066015,
+            0.1670017009603369
+          ],
+          "n_baseline_wrong": 26,
+          "wrong_to_right_rate": 0.11538461538461539,
+          "wrong_to_right_ci": [
+            0.04003244623610615,
+            0.2897590321171364
+          ],
+          "n_judged": 0,
+          "n_propagated": 0,
+          "propagation_rate": null,
+          "propagation_ci": [
+            null,
+            null
+          ],
+          "p_accuracy_mcnemar_holm": 1.0,
+          "p_accuracy_bootstrap_holm": 1.0,
+          "p_f1_bootstrap_holm": 1.0,
+          "p_cost_bootstrap_holm": 0.0007999200079992001
+        },
+        {
+          "config": "qa-cheap-decomposer",
+          "weak_step": "qa.decomposer",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "n_paired": 71,
+          "n_paired_scored": 71,
+          "delta_accuracy": -0.014084507042253521,
+          "delta_accuracy_ci": [
+            -0.0736521233719839,
+            0.0462548630980113
+          ],
+          "delta_accuracy_ci_bootstrap": [
+            -0.07042253521126761,
+            0.028169014084507043
+          ],
+          "p_accuracy_bootstrap": 0.7627237276272373,
+          "p_accuracy_mcnemar": 1.0,
+          "n_paired_f1": 71,
+          "delta_f1": -0.0010507042253521126,
+          "delta_f1_ci": [
+            -0.029152112676056337,
+            0.025261971830985917
+          ],
+          "p_f1_bootstrap": 0.9286071392860714,
+          "delta_cost": -0.007701384507042253,
+          "delta_cost_ci": [
+            -0.009872894436619718,
+            -0.005762094788732395
+          ],
+          "p_cost_bootstrap": 9.999000099990002e-05,
+          "cost_ratio": 0.7223028619704313,
+          "baseline_right_config_wrong": 2,
+          "baseline_wrong_config_right": 1,
+          "both_right": 47,
+          "both_wrong": 21,
+          "n_baseline_right": 49,
+          "right_to_wrong_rate": 0.04081632653061224,
+          "right_to_wrong_ci": [
+            0.011265633366185787,
+            0.13713032306080064
+          ],
+          "n_baseline_wrong": 22,
+          "wrong_to_right_rate": 0.045454545454545456,
+          "wrong_to_right_ci": [
+            0.00806942762126385,
+            0.21798045838657332
+          ],
+          "n_judged": 0,
+          "n_propagated": 0,
+          "propagation_rate": null,
+          "propagation_ci": [
+            null,
+            null
+          ],
+          "p_accuracy_mcnemar_holm": 1.0,
+          "p_accuracy_bootstrap_holm": 1.0,
+          "p_f1_bootstrap_holm": 1.0,
+          "p_cost_bootstrap_holm": 0.0007999200079992001
+        },
+        {
+          "config": "qa-qwen-decomposer",
+          "weak_step": "qa.decomposer",
+          "weak_model": "qwen",
+          "tier": "local",
+          "n_paired": 23,
+          "n_paired_scored": 23,
+          "delta_accuracy": -0.13043478260869565,
+          "delta_accuracy_ci": [
+            -0.28887566516473945,
+            0.04887566516473946
+          ],
+          "delta_accuracy_ci_bootstrap": [
+            -0.2608695652173913,
+            0.0
+          ],
+          "p_accuracy_bootstrap": 0.1070892910708929,
+          "p_accuracy_mcnemar": 0.25,
+          "n_paired_f1": 23,
+          "delta_f1": -0.14975652173913043,
+          "delta_f1_ci": [
+            -0.28985217391304346,
+            -0.043353152173914805
+          ],
+          "p_f1_bootstrap": 0.0217978202179782,
+          "delta_cost": -0.006258521739130435,
+          "delta_cost_ci": [
+            -0.011363520652173914,
+            -0.0016353717391304349
+          ],
+          "p_cost_bootstrap": 0.013998600139986002,
+          "cost_ratio": 0.7736206912820704,
+          "baseline_right_config_wrong": 3,
+          "baseline_wrong_config_right": 0,
+          "both_right": 13,
+          "both_wrong": 7,
+          "n_baseline_right": 16,
+          "right_to_wrong_rate": 0.1875,
+          "right_to_wrong_ci": [
+            0.06591599071428142,
+            0.4300888096197414
+          ],
+          "n_baseline_wrong": 7,
+          "wrong_to_right_rate": 0.0,
+          "wrong_to_right_ci": [
+            5.551115123125783e-17,
+            0.35433043506668743
+          ],
+          "n_judged": 0,
+          "n_propagated": 0,
+          "propagation_rate": null,
+          "propagation_ci": [
+            null,
+            null
+          ],
+          "p_accuracy_mcnemar_holm": 1.0,
+          "p_accuracy_bootstrap_holm": 0.7496250374962503,
+          "p_f1_bootstrap_holm": 0.1525847415258474,
+          "p_cost_bootstrap_holm": 0.013998600139986002
+        },
+        {
+          "config": "qa-cheap-formatter",
+          "weak_step": "qa.formatter",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "n_paired": 93,
+          "n_paired_scored": 93,
+          "delta_accuracy": 0.0,
+          "delta_accuracy_ci": [
+            -0.050535912382687474,
+            0.050535912382687474
+          ],
+          "delta_accuracy_ci_bootstrap": [
+            -0.043010752688172046,
+            0.043010752688172046
+          ],
+          "p_accuracy_bootstrap": 1.0,
+          "p_accuracy_mcnemar": 1.0,
+          "n_paired_f1": 93,
+          "delta_f1": 0.005919354838709677,
+          "delta_f1_ci": [
+            -0.016183870967741938,
+            0.02981505376344086
+          ],
+          "p_f1_bootstrap": 0.6194380561943805,
+          "delta_cost": -0.0038607978494623655,
+          "delta_cost_ci": [
+            -0.004243115967741935,
+            -0.0035008265053763444
+          ],
+          "p_cost_bootstrap": 9.999000099990002e-05,
+          "cost_ratio": 0.8567515395388847,
+          "baseline_right_config_wrong": 2,
+          "baseline_wrong_config_right": 2,
+          "both_right": 64,
+          "both_wrong": 25,
+          "n_baseline_right": 66,
+          "right_to_wrong_rate": 0.030303030303030304,
+          "right_to_wrong_ci": [
+            0.008349910198653748,
+            0.10392521911709715
+          ],
+          "n_baseline_wrong": 27,
+          "wrong_to_right_rate": 0.07407407407407407,
+          "wrong_to_right_ci": [
+            0.020554654060988622,
+            0.23369592683023144
+          ],
+          "n_judged": 0,
+          "n_propagated": 0,
+          "propagation_rate": null,
+          "propagation_ci": [
+            null,
+            null
+          ],
+          "p_accuracy_mcnemar_holm": 1.0,
+          "p_accuracy_bootstrap_holm": 1.0,
+          "p_f1_bootstrap_holm": 1.0,
+          "p_cost_bootstrap_holm": 0.0007999200079992001
+        },
+        {
+          "config": "qa-qwen-formatter",
+          "weak_step": "qa.formatter",
+          "weak_model": "qwen",
+          "tier": "local",
+          "n_paired": 85,
+          "n_paired_scored": 85,
+          "delta_accuracy": -0.07058823529411765,
+          "delta_accuracy_ci": [
+            -0.1310154306630011,
+            -0.006915603819757518
+          ],
+          "delta_accuracy_ci_bootstrap": [
+            -0.12941176470588237,
+            -0.023529411764705882
+          ],
+          "p_accuracy_bootstrap": 0.018598140185981403,
+          "p_accuracy_mcnemar": 0.03125,
+          "n_paired_f1": 85,
+          "delta_f1": -0.07040117647058823,
+          "delta_f1_ci": [
+            -0.12857761764705875,
+            -0.021656529411764772
+          ],
+          "p_f1_bootstrap": 0.0117988201179882,
+          "delta_cost": -0.003941029411764706,
+          "delta_cost_ci": [
+            -0.004355453823529412,
+            -0.0035765620588235295
+          ],
+          "p_cost_bootstrap": 9.999000099990002e-05,
+          "cost_ratio": 0.8557213673214786,
+          "baseline_right_config_wrong": 6,
+          "baseline_wrong_config_right": 0,
+          "both_right": 52,
+          "both_wrong": 27,
+          "n_baseline_right": 58,
+          "right_to_wrong_rate": 0.10344827586206896,
+          "right_to_wrong_ci": [
+            0.048281407423628964,
+            0.2078810299248423
+          ],
+          "n_baseline_wrong": 27,
+          "wrong_to_right_rate": 0.0,
+          "wrong_to_right_ci": [
+            0.0,
+            0.12455502974186705
+          ],
+          "n_judged": 0,
+          "n_propagated": 0,
+          "propagation_rate": null,
+          "propagation_ci": [
+            null,
+            null
+          ],
+          "p_accuracy_mcnemar_holm": 0.25,
+          "p_accuracy_bootstrap_holm": 0.14878512148785122,
+          "p_f1_bootstrap_holm": 0.0943905609439056,
+          "p_cost_bootstrap_holm": 0.0007999200079992001
+        },
+        {
+          "config": "qa-cheap-hop-reader",
+          "weak_step": "qa.hop_reader",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "n_paired": 90,
+          "n_paired_scored": 90,
+          "delta_accuracy": -0.022222222222222223,
+          "delta_accuracy_ci": [
+            -0.07373353741487607,
+            0.030255276545310857
+          ],
+          "delta_accuracy_ci_bootstrap": [
+            -0.06666666666666667,
+            0.022222222222222223
+          ],
+          "p_accuracy_bootstrap": 0.43545645435456454,
+          "p_accuracy_mcnemar": 0.625,
+          "n_paired_f1": 90,
+          "delta_f1": -0.024095555555555558,
+          "delta_f1_ci": [
+            -0.06360113888888888,
+            0.009938638888888827
+          ],
+          "p_f1_bootstrap": 0.20827917208279173,
+          "delta_cost": -0.009675145555555556,
+          "delta_cost_ci": [
+            -0.01096604738888889,
+            -0.008465923805555556
+          ],
+          "p_cost_bootstrap": 9.999000099990002e-05,
+          "cost_ratio": 0.6389406264778275,
+          "baseline_right_config_wrong": 3,
+          "baseline_wrong_config_right": 1,
+          "both_right": 61,
+          "both_wrong": 25,
+          "n_baseline_right": 64,
+          "right_to_wrong_rate": 0.046875,
+          "right_to_wrong_ci": [
+            0.016069016786292974,
+            0.12899653740093686
+          ],
+          "n_baseline_wrong": 26,
+          "wrong_to_right_rate": 0.038461538461538464,
+          "wrong_to_right_ci": [
+            0.006821984993543487,
+            0.18892778903034757
+          ],
+          "n_judged": 0,
+          "n_propagated": 0,
+          "propagation_rate": null,
+          "propagation_ci": [
+            null,
+            null
+          ],
+          "p_accuracy_mcnemar_holm": 1.0,
+          "p_accuracy_bootstrap_holm": 1.0,
+          "p_f1_bootstrap_holm": 1.0,
+          "p_cost_bootstrap_holm": 0.0007999200079992001
+        },
+        {
+          "config": "qa-qwen-hop-reader",
+          "weak_step": "qa.hop_reader",
+          "weak_model": "qwen",
+          "tier": "local",
+          "n_paired": 43,
+          "n_paired_scored": 43,
+          "delta_accuracy": -0.046511627906976744,
+          "delta_accuracy_ci": [
+            -0.1503381482358276,
+            0.06144925934693873
+          ],
+          "delta_accuracy_ci_bootstrap": [
+            -0.13953488372093023,
+            0.046511627906976744
+          ],
+          "p_accuracy_bootstrap": 0.43915608439156084,
+          "p_accuracy_mcnemar": 0.625,
+          "n_paired_f1": 43,
+          "delta_f1": -0.03082093023255814,
+          "delta_f1_ci": [
+            -0.10686279069767443,
+            0.036176802325581396
+          ],
+          "p_f1_bootstrap": 0.398960103989601,
+          "delta_cost": -0.01102486046511628,
+          "delta_cost_ci": [
+            -0.01300295406976744,
+            -0.009224229941860465
+          ],
+          "p_cost_bootstrap": 9.999000099990002e-05,
+          "cost_ratio": 0.6102816415112949,
+          "baseline_right_config_wrong": 3,
+          "baseline_wrong_config_right": 1,
+          "both_right": 27,
+          "both_wrong": 12,
+          "n_baseline_right": 30,
+          "right_to_wrong_rate": 0.1,
+          "right_to_wrong_ci": [
+            0.03459988874733419,
+            0.25621082579184085
+          ],
+          "n_baseline_wrong": 13,
+          "wrong_to_right_rate": 0.07692307692307693,
+          "wrong_to_right_ci": [
+            0.013710421242556586,
+            0.3331395092109959
+          ],
+          "n_judged": 0,
+          "n_propagated": 0,
+          "propagation_rate": null,
+          "propagation_ci": [
+            null,
+            null
+          ],
+          "p_accuracy_mcnemar_holm": 1.0,
+          "p_accuracy_bootstrap_holm": 1.0,
+          "p_f1_bootstrap_holm": 1.0,
+          "p_cost_bootstrap_holm": 0.0007999200079992001
+        }
+      ],
+      "pareto": {
+        "quality_metric": "mean_f1",
+        "own_questions": [
+          {
+            "config": "qa-all-strong",
+            "cost_per_question": 0.027179747663551402,
+            "mean_f1": 0.7938018691588785,
+            "n": 107,
+            "on_frontier": false,
+            "dominated_by": [
+              "qa-cheap-composer",
+              "qa-cheap-decomposer",
+              "qa-cheap-formatter"
+            ]
+          },
+          {
+            "config": "qa-cheap-composer",
+            "cost_per_question": 0.024106940816326528,
+            "mean_f1": 0.7976867346938775,
+            "n": 98,
+            "on_frontier": false,
+            "dominated_by": [
+              "qa-cheap-decomposer",
+              "qa-cheap-formatter"
+            ]
+          },
+          {
+            "config": "qa-qwen-composer",
+            "cost_per_question": 0.024270397590361446,
+            "mean_f1": 0.7699204819277108,
+            "n": 83,
+            "on_frontier": false,
+            "dominated_by": [
+              "qa-cheap-composer",
+              "qa-cheap-decomposer",
+              "qa-cheap-formatter",
+              "qa-cheap-hop-reader",
+              "qa-qwen-hop-reader"
+            ]
+          },
+          {
+            "config": "qa-cheap-decomposer",
+            "cost_per_question": 0.02003165070422535,
+            "mean_f1": 0.7992887323943662,
+            "n": 71,
+            "on_frontier": true,
+            "dominated_by": []
+          },
+          {
+            "config": "qa-qwen-decomposer",
+            "cost_per_question": 0.021387652173913044,
+            "mean_f1": 0.6739173913043478,
+            "n": 23,
+            "on_frontier": false,
+            "dominated_by": [
+              "qa-cheap-decomposer",
+              "qa-cheap-hop-reader",
+              "qa-qwen-hop-reader"
+            ]
+          },
+          {
+            "config": "qa-cheap-formatter",
+            "cost_per_question": 0.023090960215053764,
+            "mean_f1": 0.8131247311827956,
+            "n": 93,
+            "on_frontier": true,
+            "dominated_by": []
+          },
+          {
+            "config": "qa-qwen-formatter",
+            "cost_per_question": 0.023374376470588237,
+            "mean_f1": 0.7186588235294118,
+            "n": 85,
+            "on_frontier": false,
+            "dominated_by": [
+              "qa-cheap-decomposer",
+              "qa-cheap-formatter",
+              "qa-cheap-hop-reader",
+              "qa-qwen-hop-reader"
+            ]
+          },
+          {
+            "config": "qa-cheap-hop-reader",
+            "cost_per_question": 0.017121404444444446,
+            "mean_f1": 0.7833499999999999,
+            "n": 90,
+            "on_frontier": true,
+            "dominated_by": []
+          },
+          {
+            "config": "qa-qwen-hop-reader",
+            "cost_per_question": 0.017264441860465118,
+            "mean_f1": 0.7811767441860465,
+            "n": 43,
+            "on_frontier": false,
+            "dominated_by": [
+              "qa-cheap-hop-reader"
+            ]
+          }
+        ],
+        "common_questions": {
+          "n_common": 23,
+          "used": true,
+          "points": [
+            {
+              "config": "qa-all-strong",
+              "cost_per_question": 0.02764617391304348,
+              "mean_f1": 0.8236739130434784,
+              "n": 23,
+              "on_frontier": false,
+              "dominated_by": [
+                "qa-cheap-formatter"
+              ]
+            },
+            {
+              "config": "qa-cheap-composer",
+              "cost_per_question": 0.025110434782608694,
+              "mean_f1": 0.8118043478260869,
+              "n": 23,
+              "on_frontier": false,
+              "dominated_by": [
+                "qa-cheap-decomposer",
+                "qa-cheap-formatter"
+              ]
+            },
+            {
+              "config": "qa-qwen-composer",
+              "cost_per_question": 0.02492236956521739,
+              "mean_f1": 0.8062826086956522,
+              "n": 23,
+              "on_frontier": false,
+              "dominated_by": [
+                "qa-cheap-decomposer",
+                "qa-cheap-formatter"
+              ]
+            },
+            {
+              "config": "qa-cheap-decomposer",
+              "cost_per_question": 0.018756452173913044,
+              "mean_f1": 0.8118043478260869,
+              "n": 23,
+              "on_frontier": true,
+              "dominated_by": []
+            },
+            {
+              "config": "qa-qwen-decomposer",
+              "cost_per_question": 0.021387652173913044,
+              "mean_f1": 0.6739173913043478,
+              "n": 23,
+              "on_frontier": false,
+              "dominated_by": [
+                "qa-cheap-decomposer",
+                "qa-cheap-hop-reader",
+                "qa-qwen-hop-reader"
+              ]
+            },
+            {
+              "config": "qa-cheap-formatter",
+              "cost_per_question": 0.024511921739130436,
+              "mean_f1": 0.8236739130434784,
+              "n": 23,
+              "on_frontier": true,
+              "dominated_by": []
+            },
+            {
+              "config": "qa-qwen-formatter",
+              "cost_per_question": 0.024380478260869566,
+              "mean_f1": 0.7801956521739131,
+              "n": 23,
+              "on_frontier": false,
+              "dominated_by": [
+                "qa-cheap-decomposer"
+              ]
+            },
+            {
+              "config": "qa-cheap-hop-reader",
+              "cost_per_question": 0.01820106956521739,
+              "mean_f1": 0.7463826086956521,
+              "n": 23,
+              "on_frontier": false,
+              "dominated_by": [
+                "qa-qwen-hop-reader"
+              ]
+            },
+            {
+              "config": "qa-qwen-hop-reader",
+              "cost_per_question": 0.017185695652173913,
+              "mean_f1": 0.7463826086956521,
+              "n": 23,
+              "on_frontier": true,
+              "dominated_by": []
+            }
+          ]
+        }
+      },
+      "step_findings": [
+        {
+          "step": "qa.composer",
+          "model": "flash-lite",
+          "tier": "cheap",
+          "config": "qa-cheap-composer",
+          "n_paired": 98,
+          "metric": "mean_f1",
+          "delta": -0.007110204081632653,
+          "delta_ci": [
+            -0.03806224489795919,
+            0.01827280612244895
+          ],
+          "p_holm": 1.0,
+          "cost_ratio": 0.8831430961742476,
+          "right_to_wrong_rate": 0.02857142857142857,
+          "verdict": "non-inferior"
+        },
+        {
+          "step": "qa.composer",
+          "model": "qwen",
+          "tier": "local",
+          "config": "qa-qwen-composer",
+          "n_paired": 83,
+          "metric": "mean_f1",
+          "delta": -0.023695180722891566,
+          "delta_ci": [
+            -0.07108433734939759,
+            0.016465060240963857
+          ],
+          "p_holm": 1.0,
+          "cost_ratio": 0.8876024274597454,
+          "right_to_wrong_rate": 0.07017543859649122,
+          "verdict": "inconclusive"
+        },
+        {
+          "step": "qa.decomposer",
+          "model": "flash-lite",
+          "tier": "cheap",
+          "config": "qa-cheap-decomposer",
+          "n_paired": 71,
+          "metric": "mean_f1",
+          "delta": -0.0010507042253521126,
+          "delta_ci": [
+            -0.029152112676056337,
+            0.025261971830985917
+          ],
+          "p_holm": 1.0,
+          "cost_ratio": 0.7223028619704313,
+          "right_to_wrong_rate": 0.04081632653061224,
+          "verdict": "non-inferior"
+        },
+        {
+          "step": "qa.decomposer",
+          "model": "qwen",
+          "tier": "local",
+          "config": "qa-qwen-decomposer",
+          "n_paired": 23,
+          "metric": "mean_f1",
+          "delta": -0.14975652173913043,
+          "delta_ci": [
+            -0.28985217391304346,
+            -0.043353152173914805
+          ],
+          "p_holm": 0.1525847415258474,
+          "cost_ratio": 0.7736206912820704,
+          "right_to_wrong_rate": 0.1875,
+          "verdict": "worse (unadjusted)"
+        },
+        {
+          "step": "qa.formatter",
+          "model": "flash-lite",
+          "tier": "cheap",
+          "config": "qa-cheap-formatter",
+          "n_paired": 93,
+          "metric": "mean_f1",
+          "delta": 0.005919354838709677,
+          "delta_ci": [
+            -0.016183870967741938,
+            0.02981505376344086
+          ],
+          "p_holm": 1.0,
+          "cost_ratio": 0.8567515395388847,
+          "right_to_wrong_rate": 0.030303030303030304,
+          "verdict": "non-inferior"
+        },
+        {
+          "step": "qa.formatter",
+          "model": "qwen",
+          "tier": "local",
+          "config": "qa-qwen-formatter",
+          "n_paired": 85,
+          "metric": "mean_f1",
+          "delta": -0.07040117647058823,
+          "delta_ci": [
+            -0.12857761764705875,
+            -0.021656529411764772
+          ],
+          "p_holm": 0.0943905609439056,
+          "cost_ratio": 0.8557213673214786,
+          "right_to_wrong_rate": 0.10344827586206896,
+          "verdict": "worse (unadjusted)"
+        },
+        {
+          "step": "qa.hop_reader",
+          "model": "flash-lite",
+          "tier": "cheap",
+          "config": "qa-cheap-hop-reader",
+          "n_paired": 90,
+          "metric": "mean_f1",
+          "delta": -0.024095555555555558,
+          "delta_ci": [
+            -0.06360113888888888,
+            0.009938638888888827
+          ],
+          "p_holm": 1.0,
+          "cost_ratio": 0.6389406264778275,
+          "right_to_wrong_rate": 0.046875,
+          "verdict": "inconclusive"
+        },
+        {
+          "step": "qa.hop_reader",
+          "model": "qwen",
+          "tier": "local",
+          "config": "qa-qwen-hop-reader",
+          "n_paired": 43,
+          "metric": "mean_f1",
+          "delta": -0.03082093023255814,
+          "delta_ci": [
+            -0.10686279069767443,
+            0.036176802325581396
+          ],
+          "p_holm": 1.0,
+          "cost_ratio": 0.6102816415112949,
+          "right_to_wrong_rate": 0.1,
+          "verdict": "inconclusive"
+        }
+      ]
+    },
+    "sql": {
+      "primary_metric": "accuracy",
+      "baseline": "all-flash",
+      "configs": [
+        {
+          "config": "all-flash",
+          "weak_step": "",
+          "weak_model": "",
+          "tier": "strong",
+          "is_baseline": true,
+          "n_questions": 14,
+          "n_scored": 14,
+          "accuracy": 0.7857142857142857,
+          "accuracy_ci": [
+            0.524107694133997,
+            0.9242861328730683
+          ],
+          "n_f1": 0,
+          "mean_f1": null,
+          "mean_f1_ci": [
+            null,
+            null
+          ],
+          "n_em": 0,
+          "em_rate": null,
+          "em_rate_ci": [
+            null,
+            null
+          ],
+          "cost_per_question": 0.037515964285714284,
+          "cost_per_question_ci": [
+            0.032836631250000005,
+            0.04212905089285715
+          ],
+          "total_cost": 0.5252235,
+          "pareto_dominated_by": [],
+          "on_pareto_frontier": true
+        },
+        {
+          "config": "cheap-decomposer",
+          "weak_step": "sql.decomposer",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "is_baseline": false,
+          "n_questions": 14,
+          "n_scored": 14,
+          "accuracy": 0.6428571428571429,
+          "accuracy_ci": [
+            0.38764423103907397,
+            0.8365526824644587
+          ],
+          "n_f1": 0,
+          "mean_f1": null,
+          "mean_f1_ci": [
+            null,
+            null
+          ],
+          "n_em": 0,
+          "em_rate": null,
+          "em_rate_ci": [
+            null,
+            null
+          ],
+          "cost_per_question": 0.022274128571428572,
+          "cost_per_question_ci": [
+            0.015894886071428572,
+            0.03082488732142857
+          ],
+          "total_cost": 0.3118378,
+          "pareto_dominated_by": [],
+          "on_pareto_frontier": true
+        },
+        {
+          "config": "cheap-refiner",
+          "weak_step": "sql.refiner",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "is_baseline": false,
+          "n_questions": 14,
+          "n_scored": 14,
+          "accuracy": 0.7857142857142857,
+          "accuracy_ci": [
+            0.524107694133997,
+            0.9242861328730683
+          ],
+          "n_f1": 0,
+          "mean_f1": null,
+          "mean_f1_ci": [
+            null,
+            null
+          ],
+          "n_em": 0,
+          "em_rate": null,
+          "em_rate_ci": [
+            null,
+            null
+          ],
+          "cost_per_question": 0.037515964285714284,
+          "cost_per_question_ci": [
+            0.032869344642857144,
+            0.04212794196428571
+          ],
+          "total_cost": 0.5252235,
+          "pareto_dominated_by": [],
+          "on_pareto_frontier": true
+        },
+        {
+          "config": "cheap-selector",
+          "weak_step": "sql.selector",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "is_baseline": false,
+          "n_questions": 14,
+          "n_scored": 14,
+          "accuracy": 0.6428571428571429,
+          "accuracy_ci": [
+            0.38764423103907397,
+            0.8365526824644587
+          ],
+          "n_f1": 0,
+          "mean_f1": null,
+          "mean_f1_ci": [
+            null,
+            null
+          ],
+          "n_em": 0,
+          "em_rate": null,
+          "em_rate_ci": [
+            null,
+            null
+          ],
+          "cost_per_question": 0.026528657142857143,
+          "cost_per_question_ci": [
+            0.019615856607142858,
+            0.03595485071428572
+          ],
+          "total_cost": 0.3714012,
+          "pareto_dominated_by": [
+            "cheap-decomposer"
+          ],
+          "on_pareto_frontier": false
+        }
+      ],
+      "comparisons": [
+        {
+          "config": "cheap-decomposer",
+          "weak_step": "sql.decomposer",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "n_paired": 14,
+          "n_paired_scored": 14,
+          "delta_accuracy": -0.14285714285714285,
+          "delta_accuracy_ci": [
+            -0.36221587097781127,
+            0.11221587097781127
+          ],
+          "delta_accuracy_ci_bootstrap": [
+            -0.35714285714285715,
+            0.0
+          ],
+          "p_accuracy_bootstrap": 0.2390760923907609,
+          "p_accuracy_mcnemar": 0.5,
+          "n_paired_f1": 0,
+          "delta_f1": null,
+          "delta_f1_ci": [
+            null,
+            null
+          ],
+          "p_f1_bootstrap": null,
+          "delta_cost": -0.015241835714285714,
+          "delta_cost_ci": [
+            -0.021590698749999998,
+            -0.006617937857142865
+          ],
+          "p_cost_bootstrap": 0.0007999200079992001,
+          "cost_ratio": 0.5937240051140132,
+          "baseline_right_config_wrong": 2,
+          "baseline_wrong_config_right": 0,
+          "both_right": 9,
+          "both_wrong": 3,
+          "n_baseline_right": 11,
+          "right_to_wrong_rate": 0.18181818181818182,
+          "right_to_wrong_ci": [
+            0.05136768974608513,
+            0.4769805619608442
+          ],
+          "n_baseline_wrong": 3,
+          "wrong_to_right_rate": 0.0,
+          "wrong_to_right_ci": [
+            5.551115123125783e-17,
+            0.5614970317550454
+          ],
+          "n_judged": 14,
+          "n_propagated": 2,
+          "propagation_rate": 0.14285714285714285,
+          "propagation_ci": [
+            0.040093921271464966,
+            0.39941379496970353
+          ],
+          "p_accuracy_mcnemar_holm": 1.0,
+          "p_accuracy_bootstrap_holm": 0.7172282771722828,
+          "p_f1_bootstrap_holm": null,
+          "p_cost_bootstrap_holm": 0.0023997600239976003
+        },
+        {
+          "config": "cheap-refiner",
+          "weak_step": "sql.refiner",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "n_paired": 14,
+          "n_paired_scored": 14,
+          "delta_accuracy": 0.0,
+          "delta_accuracy_ci": [
+            -0.17323797804370974,
+            0.17323797804370974
+          ],
+          "delta_accuracy_ci_bootstrap": [
+            0.0,
+            0.0
+          ],
+          "p_accuracy_bootstrap": 1.0,
+          "p_accuracy_mcnemar": 1.0,
+          "n_paired_f1": 0,
+          "delta_f1": null,
+          "delta_f1_ci": [
+            null,
+            null
+          ],
+          "p_f1_bootstrap": null,
+          "delta_cost": 0.0,
+          "delta_cost_ci": [
+            0.0,
+            0.0
+          ],
+          "p_cost_bootstrap": 1.0,
+          "cost_ratio": 1.0,
+          "baseline_right_config_wrong": 0,
+          "baseline_wrong_config_right": 0,
+          "both_right": 11,
+          "both_wrong": 3,
+          "n_baseline_right": 11,
+          "right_to_wrong_rate": 0.0,
+          "right_to_wrong_ci": [
+            0.0,
+            0.2588329669680317
+          ],
+          "n_baseline_wrong": 3,
+          "wrong_to_right_rate": 0.0,
+          "wrong_to_right_ci": [
+            5.551115123125783e-17,
+            0.5614970317550454
+          ],
+          "n_judged": 14,
+          "n_propagated": 0,
+          "propagation_rate": 0.0,
+          "propagation_ci": [
+            1.3877787807814457e-17,
+            0.2153108027376358
+          ],
+          "p_accuracy_mcnemar_holm": 1.0,
+          "p_accuracy_bootstrap_holm": 1.0,
+          "p_f1_bootstrap_holm": null,
+          "p_cost_bootstrap_holm": 1.0
+        },
+        {
+          "config": "cheap-selector",
+          "weak_step": "sql.selector",
+          "weak_model": "flash-lite",
+          "tier": "cheap",
+          "n_paired": 14,
+          "n_paired_scored": 14,
+          "delta_accuracy": -0.14285714285714285,
+          "delta_accuracy_ci": [
+            -0.36221587097781127,
+            0.11221587097781127
+          ],
+          "delta_accuracy_ci_bootstrap": [
+            -0.35714285714285715,
+            0.0
+          ],
+          "p_accuracy_bootstrap": 0.24577542245775422,
+          "p_accuracy_mcnemar": 0.5,
+          "n_paired_f1": 0,
+          "delta_f1": null,
+          "delta_f1_ci": [
+            null,
+            null
+          ],
+          "p_f1_bootstrap": null,
+          "delta_cost": -0.010987307142857143,
+          "delta_cost_ci": [
+            -0.017528734285714283,
+            -0.003660770000000002
+          ],
+          "p_cost_bootstrap": 0.0022997700229977,
+          "cost_ratio": 0.7071298218758298,
+          "baseline_right_config_wrong": 2,
+          "baseline_wrong_config_right": 0,
+          "both_right": 9,
+          "both_wrong": 3,
+          "n_baseline_right": 11,
+          "right_to_wrong_rate": 0.18181818181818182,
+          "right_to_wrong_ci": [
+            0.05136768974608513,
+            0.4769805619608442
+          ],
+          "n_baseline_wrong": 3,
+          "wrong_to_right_rate": 0.0,
+          "wrong_to_right_ci": [
+            5.551115123125783e-17,
+            0.5614970317550454
+          ],
+          "n_judged": 14,
+          "n_propagated": 2,
+          "propagation_rate": 0.14285714285714285,
+          "propagation_ci": [
+            0.040093921271464966,
+            0.39941379496970353
+          ],
+          "p_accuracy_mcnemar_holm": 1.0,
+          "p_accuracy_bootstrap_holm": 0.7172282771722828,
+          "p_f1_bootstrap_holm": null,
+          "p_cost_bootstrap_holm": 0.0045995400459954
+        }
+      ],
+      "pareto": {
+        "quality_metric": "accuracy",
+        "own_questions": [
+          {
+            "config": "all-flash",
+            "cost_per_question": 0.037515964285714284,
+            "accuracy": 0.7857142857142857,
+            "n": 14,
+            "on_frontier": true,
+            "dominated_by": []
+          },
+          {
+            "config": "cheap-decomposer",
+            "cost_per_question": 0.022274128571428572,
+            "accuracy": 0.6428571428571429,
+            "n": 14,
+            "on_frontier": true,
+            "dominated_by": []
+          },
+          {
+            "config": "cheap-refiner",
+            "cost_per_question": 0.037515964285714284,
+            "accuracy": 0.7857142857142857,
+            "n": 14,
+            "on_frontier": true,
+            "dominated_by": []
+          },
+          {
+            "config": "cheap-selector",
+            "cost_per_question": 0.026528657142857143,
+            "accuracy": 0.6428571428571429,
+            "n": 14,
+            "on_frontier": false,
+            "dominated_by": [
+              "cheap-decomposer"
+            ]
+          }
+        ],
+        "common_questions": {
+          "n_common": 14,
+          "used": false,
+          "points": []
+        }
+      },
+      "step_findings": [
+        {
+          "step": "sql.decomposer",
+          "model": "flash-lite",
+          "tier": "cheap",
+          "config": "cheap-decomposer",
+          "n_paired": 14,
+          "metric": "accuracy",
+          "delta": -0.14285714285714285,
+          "delta_ci": [
+            -0.36221587097781127,
+            0.11221587097781127
+          ],
+          "p_holm": 1.0,
+          "cost_ratio": 0.5937240051140132,
+          "right_to_wrong_rate": 0.18181818181818182,
+          "verdict": "too few"
+        },
+        {
+          "step": "sql.refiner",
+          "model": "flash-lite",
+          "tier": "cheap",
+          "config": "cheap-refiner",
+          "n_paired": 14,
+          "metric": "accuracy",
+          "delta": 0.0,
+          "delta_ci": [
+            -0.17323797804370974,
+            0.17323797804370974
+          ],
+          "p_holm": 1.0,
+          "cost_ratio": 1.0,
+          "right_to_wrong_rate": 0.0,
+          "verdict": "too few"
+        },
+        {
+          "step": "sql.selector",
+          "model": "flash-lite",
+          "tier": "cheap",
+          "config": "cheap-selector",
+          "n_paired": 14,
+          "metric": "accuracy",
+          "delta": -0.14285714285714285,
+          "delta_ci": [
+            -0.36221587097781127,
+            0.11221587097781127
+          ],
+          "p_holm": 1.0,
+          "cost_ratio": 0.7071298218758298,
+          "right_to_wrong_rate": 0.18181818181818182,
+          "verdict": "too few"
+        }
+      ]
+    }
+  },
+  "data_quality": {
+    "warnings": [
+      "qa: the common-ids frontier is based on the 23 question_ids every config answered",
+      "sql: fewer than 20 questions for all-flash, cheap-decomposer, cheap-refiner, cheap-selector; treat those intervals as indicative only",
+      "sql: only 14 question_ids shared by every config (< 20); common-ids frontier not computed"
+    ]
+  }
+}
